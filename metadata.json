@@ -1,0 +1,6 @@
+{
+  "name": "SnapFocus",
+  "description": "Tactile Pomodoro mobile app with photo-gated transitions to break phone scrolling and unlock focus sessions.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
