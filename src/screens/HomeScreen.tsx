@@ -2,13 +2,11 @@ import React, { useState, useMemo } from 'react';
 import { useTaskStore } from '../store/useTaskStore';
 import { TaskItem } from '../components/TaskItem';
 import {
-  Play,
   Plus,
   Clock,
   Sparkles,
   Coffee,
   Flame,
-  RotateCcw,
   AlertTriangle,
   CheckCircle2,
   Calendar,
@@ -24,6 +22,7 @@ import {
   formatDateToYMD,
   getTodayDateString,
   isTaskScheduledOnDate,
+  isTaskCompletedOnDate,
 } from '../utils/dateUtils';
 
 export const HomeScreen: React.FC = () => {
@@ -99,6 +98,22 @@ export const HomeScreen: React.FC = () => {
   const focusMinutes = dateTasks.filter((t) => t.type === 'focus').reduce((acc, t) => acc + t.durationMinutes, 0);
   const breakMinutes = dateTasks.filter((t) => t.type === 'break').reduce((acc, t) => acc + t.durationMinutes, 0);
 
+  // Day progression statistics
+  const completedTasksCount = useMemo(() => {
+    return dateTasks.filter((t) => isTaskCompletedOnDate(t, selectedDateStr)).length;
+  }, [dateTasks, selectedDateStr]);
+
+  const totalTasksCount = dateTasks.length;
+  const progressPercent = totalTasksCount > 0
+    ? Math.round((completedTasksCount / totalTasksCount) * 100)
+    : 0;
+
+  const completedFocusMinutes = useMemo(() => {
+    return dateTasks
+      .filter((t) => t.type === 'focus' && isTaskCompletedOnDate(t, selectedDateStr))
+      .reduce((acc, t) => acc + t.durationMinutes, 0);
+  }, [dateTasks, selectedDateStr]);
+
   const DURATION_PRESETS = [5, 10, 15, 25, 30, 45, 60];
 
   const handleCreateTask = (e: React.FormEvent) => {
@@ -126,10 +141,6 @@ export const HomeScreen: React.FC = () => {
     setHasRepeatUntil(false);
     setNewRepeatUntil('');
     setIsAddingTask(false);
-  };
-
-  const handleStart = () => {
-    startRoutine(0);
   };
 
   const handleMoveUp = (index: number) => {
@@ -300,6 +311,60 @@ export const HomeScreen: React.FC = () => {
             <span>Add Block</span>
           </button>
         </div>
+
+        {/* Day Progression Bar under Task Queue */}
+        {totalTasksCount > 0 && (
+          <div className="mb-3.5 p-3 rounded-2xl bg-[#15151A] border border-white/[0.08] shadow-sm">
+            <div className="flex items-center justify-between text-xs mb-1.5">
+              <div className="flex items-center gap-1.5">
+                <CheckCircle2
+                  className={`w-3.5 h-3.5 ${
+                    progressPercent === 100 ? 'text-emerald-400' : 'text-[#FF6B00]'
+                  }`}
+                />
+                <span className="font-bold text-neutral-200">
+                  {progressPercent === 100 ? 'All Tasks Done! Fantastic 🎉' : 'Daily Progress'}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 font-mono text-[11px]">
+                <span className="text-neutral-400">
+                  <strong className="text-white font-bold">{completedTasksCount}</strong>/{totalTasksCount} done
+                </span>
+                <span
+                  className={`font-bold px-1.5 py-0.5 rounded-md ${
+                    progressPercent === 100
+                      ? 'bg-emerald-500/20 text-emerald-300'
+                      : 'bg-white/10 text-neutral-300'
+                  }`}
+                >
+                  {progressPercent}%
+                </span>
+              </div>
+            </div>
+
+            {/* Visual Progress Bar Track & Gradient Fill */}
+            <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden relative">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ease-out ${
+                  progressPercent === 100
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_12px_rgba(16,185,129,0.5)]'
+                    : 'bg-gradient-to-r from-[#FF6B00] via-amber-500 to-emerald-400'
+                }`}
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+
+            {/* Focus time details */}
+            {focusMinutes > 0 && (
+              <div className="flex items-center justify-between text-[10px] text-neutral-400 mt-1.5 font-mono">
+                <span>Focus Completed: {completedFocusMinutes}m / {focusMinutes}m</span>
+                {progressPercent === 100 && (
+                  <span className="text-emerald-400 font-semibold">100% Target Reached</span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Add Task Form Card with Custom/Preset Duration, Recurrence, and Prominent Confirm Button */}
         {isAddingTask && (
@@ -631,43 +696,6 @@ export const HomeScreen: React.FC = () => {
               />
             ))}
           </div>
-        )}
-      </div>
-
-      {/* Sticky Bottom Actions */}
-      <div className="mt-6 pt-3 flex flex-col gap-2">
-        {timerStatus === 'running' || timerStatus === 'paused' ? (
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              id="resume-routine-cta"
-              onClick={() => setActiveTab('timer')}
-              className="flex-1 py-3.5 px-4 rounded-2xl bg-gradient-to-r from-[#FF6B00] to-[#FF8533] text-black font-extrabold text-sm tracking-wide flex items-center justify-center gap-2 shadow-[0_10px_25px_rgba(255,107,0,0.3)] hover:brightness-110 active:scale-[0.98] transition-all"
-            >
-              <Play className="w-4 h-4 fill-current" />
-              <span>Go to Active Timer</span>
-            </button>
-
-            <button
-              type="button"
-              id="reset-routine-btn"
-              onClick={resetRoutine}
-              className="p-3.5 rounded-2xl bg-[#1C1C22] hover:bg-white/10 text-neutral-300 border border-white/10 transition-colors"
-              title="Reset Routine"
-            >
-              <RotateCcw className="w-4 h-4" />
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            id="start-routine-cta-btn"
-            onClick={handleStart}
-            className="w-full py-4 px-5 rounded-2xl bg-white text-black font-extrabold text-sm tracking-wide flex items-center justify-center gap-2 shadow-[0_10px_30px_rgba(255,255,255,0.2)] hover:bg-neutral-200 active:scale-[0.98] transition-all cursor-pointer"
-          >
-            <Play className="w-4 h-4 fill-current" />
-            <span>Start Routine Now</span>
-          </button>
         )}
       </div>
     </div>
