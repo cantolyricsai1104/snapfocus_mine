@@ -1,18 +1,22 @@
 import 'routine.dart';
 import 'routine_ports.dart';
+import 'snapshot.dart';
 
 class RoutineController {
   RoutineController({
     required RoutineClock clock,
     required RoutineRepository repository,
     required NotificationScheduler notifications,
+    SnapshotRepository? snapshots,
   }) : _clock = clock,
        _repository = repository,
-       _notifications = notifications;
+       _notifications = notifications,
+       _snapshots = snapshots;
 
   final RoutineClock _clock;
   final RoutineRepository _repository;
   final NotificationScheduler _notifications;
+  final SnapshotRepository? _snapshots;
 
   RoutineState? _state;
 
@@ -163,12 +167,20 @@ class RoutineController {
     return locked;
   }
 
-  Future<RoutineState> unlockWithPhoto() async {
+  Future<RoutineState> unlockWithPhoto(CapturedPhoto photo) async {
     final current = _requireState();
     if (current.status != RoutineStatus.locked ||
         current.phase != RoutinePhase.breakTime) {
       throw StateError('Only a locked break can be unlocked with a photo.');
     }
+
+    final snapshots = _snapshots;
+    if (snapshots == null) {
+      throw StateError(
+        'A snapshot repository is required to unlock a photo gate.',
+      );
+    }
+    await snapshots.add(photo);
 
     final now = _clock.now();
     final nextFocus = RoutineState(

@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/domain/routine.dart';
 import 'package:mobile/domain/routine_controller.dart';
 import 'package:mobile/domain/routine_ports.dart';
+import 'package:mobile/domain/snapshot.dart';
 
 void main() {
   group('RoutineController', () {
@@ -33,10 +34,12 @@ void main() {
       final clock = FakeClock(DateTime(2026, 9, 16, 9));
       final repository = MemoryRoutineRepository();
       final notifications = RecordingNotificationScheduler();
+      final snapshots = MemorySnapshotRepository();
       final controller = RoutineController(
         clock: clock,
         repository: repository,
         notifications: notifications,
+        snapshots: snapshots,
       );
       final running = await controller.start(
         focusDuration: const Duration(minutes: 25),
@@ -189,10 +192,12 @@ void main() {
       final clock = FakeClock(DateTime(2026, 9, 16, 9));
       final repository = MemoryRoutineRepository();
       final notifications = RecordingNotificationScheduler();
+      final snapshots = MemorySnapshotRepository();
       final controller = RoutineController(
         clock: clock,
         repository: repository,
         notifications: notifications,
+        snapshots: snapshots,
       );
       await controller.start(
         focusDuration: const Duration(minutes: 25),
@@ -203,7 +208,12 @@ void main() {
       clock.current = DateTime(2026, 9, 16, 9, 30);
       await controller.refresh();
 
-      final nextFocus = await controller.unlockWithPhoto();
+      final photo = CapturedPhoto(
+        id: 'photo-1',
+        path: '/private/photo-1.jpg',
+        capturedAt: clock.current,
+      );
+      final nextFocus = await controller.unlockWithPhoto(photo);
 
       expect(nextFocus.phase, RoutinePhase.focus);
       expect(nextFocus.status, RoutineStatus.running);
@@ -211,6 +221,7 @@ void main() {
       expect(nextFocus.endsAt, DateTime(2026, 9, 16, 9, 55));
       expect(nextFocus.progress, 0);
       expect(notifications.scheduled, hasLength(3));
+      expect(snapshots.saved, [photo]);
     });
   });
 }
@@ -249,4 +260,26 @@ class RecordingNotificationScheduler implements NotificationScheduler {
   Future<void> schedulePhaseEnd(RoutineState state) async {
     scheduled.add(state);
   }
+}
+
+class MemorySnapshotRepository implements SnapshotRepository {
+  final saved = <CapturedPhoto>[];
+
+  @override
+  Future<void> add(CapturedPhoto photo) async {
+    saved.add(photo);
+  }
+
+  @override
+  Future<void> clearAll() async {
+    saved.clear();
+  }
+
+  @override
+  Future<void> delete(String id) async {
+    saved.removeWhere((photo) => photo.id == id);
+  }
+
+  @override
+  Future<List<CapturedPhoto>> list() async => List.unmodifiable(saved);
 }
