@@ -3,7 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'domain/routine_controller.dart';
 import 'domain/routine_ports.dart';
+import 'domain/task_controller.dart';
+import 'features/calendar/calendar_screen.dart';
+import 'features/gallery/gallery_screen.dart';
 import 'features/routine/routine_screen.dart';
+import 'features/tasks/tasks_screen.dart';
 
 final routineControllerProvider = Provider<RoutineController>((ref) {
   throw UnimplementedError('The app must provide a RoutineController.');
@@ -13,15 +17,21 @@ final snapshotRepositoryProvider = Provider<SnapshotRepository>((ref) {
   throw UnimplementedError('The app must provide a SnapshotRepository.');
 });
 
+final taskControllerProvider = Provider<TaskController>((ref) {
+  throw UnimplementedError('The app must provide a TaskController.');
+});
+
 class SnapFocusApp extends StatelessWidget {
   const SnapFocusApp({
     super.key,
     required this.controller,
     required this.snapshots,
+    required this.tasks,
   });
 
   final RoutineController controller;
   final SnapshotRepository snapshots;
+  final TaskController tasks;
 
   @override
   Widget build(BuildContext context) {
@@ -29,6 +39,7 @@ class SnapFocusApp extends StatelessWidget {
       overrides: [
         routineControllerProvider.overrideWithValue(controller),
         snapshotRepositoryProvider.overrideWithValue(snapshots),
+        taskControllerProvider.overrideWithValue(tasks),
       ],
       child: const _AppView(),
     );
@@ -56,9 +67,74 @@ class _AppView extends ConsumerWidget {
           elevation: 0,
         ),
       ),
-      home: RoutineScreen(
-        controller: ref.watch(routineControllerProvider),
-        snapshots: ref.watch(snapshotRepositoryProvider),
+      home: const _MobileShell(),
+    );
+  }
+}
+
+class _MobileShell extends ConsumerStatefulWidget {
+  const _MobileShell();
+
+  @override
+  ConsumerState<_MobileShell> createState() => _MobileShellState();
+}
+
+class _MobileShellState extends ConsumerState<_MobileShell> {
+  int _tab = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final tasks = ref.watch(taskControllerProvider);
+    final routine = ref.watch(routineControllerProvider);
+    final snapshots = ref.watch(snapshotRepositoryProvider);
+
+    return Scaffold(
+      body: IndexedStack(
+        index: _tab,
+        children: [
+          TasksScreen(
+            controller: tasks,
+            onStartTask: (task) async {
+              await tasks.startTask(task);
+              if (mounted) setState(() => _tab = 2);
+            },
+          ),
+          CalendarScreen(
+            controller: tasks,
+            onStartTask: (task) async {
+              await tasks.startTask(task);
+              if (mounted) setState(() => _tab = 2);
+            },
+          ),
+          RoutineScreen(
+            controller: routine,
+            snapshots: snapshots,
+            taskTitle: tasks.selectedTask?.title,
+          ),
+          GalleryScreen(repository: snapshots),
+        ],
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _tab,
+        onDestinationSelected: (index) => setState(() => _tab = index),
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.checklist_rounded),
+            label: 'Tasks',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.calendar_month_rounded),
+            label: 'Calendar',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.timer_rounded),
+            label: 'Timer',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.auto_awesome_mosaic_rounded),
+            label: 'Proof',
+          ),
+        ],
       ),
     );
   }

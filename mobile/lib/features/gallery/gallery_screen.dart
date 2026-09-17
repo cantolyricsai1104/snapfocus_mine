@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../domain/routine_ports.dart';
 import '../../domain/snapshot.dart';
@@ -17,6 +18,7 @@ class GalleryScreen extends StatefulWidget {
 class _GalleryScreenState extends State<GalleryScreen> {
   List<CapturedPhoto> _photos = const [];
   bool _loading = true;
+  bool _allTime = false;
 
   @override
   void initState() {
@@ -41,6 +43,26 @@ class _GalleryScreenState extends State<GalleryScreen> {
   }
 
   Future<void> _clearAll() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear all proof photos?'),
+        content: const Text(
+          'This removes the private copies from this device.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Clear all'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
     for (final photo in _photos) {
       await _deleteFile(photo.path);
     }
@@ -55,6 +77,11 @@ class _GalleryScreenState extends State<GalleryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final today = DateTime.now();
+    final todayPhotos = _photos
+        .where((photo) => _sameDay(photo.capturedAt, today))
+        .toList(growable: false);
+    final visiblePhotos = _allTime ? _photos : todayPhotos;
     return Scaffold(
       backgroundColor: const Color(0xFFFFF9F2),
       appBar: AppBar(
@@ -70,24 +97,179 @@ class _GalleryScreenState extends State<GalleryScreen> {
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : _photos.isEmpty
-          ? const _EmptyGallery()
-          : GridView.builder(
-              padding: const EdgeInsets.all(20),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 14,
-                mainAxisSpacing: 14,
-                childAspectRatio: 0.82,
-              ),
-              itemCount: _photos.length,
-              itemBuilder: (context, index) => _PhotoTile(
-                photo: _photos[index],
-                onDelete: () => _delete(_photos[index]),
-              ),
+          : ListView(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+              children: [
+                const Text(
+                  'Daily visual proof of every session unlocked.',
+                  style: TextStyle(
+                    color: Color(0xFF756C68),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _GalleryStat(
+                        label: 'Unlocked today',
+                        value: '${todayPhotos.length}',
+                        icon: Icons.verified_rounded,
+                        color: const Color(0xFF5E9B78),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _GalleryStat(
+                        label: 'Focus proof',
+                        value: '${todayPhotos.length * 25}m',
+                        icon: Icons.timer_rounded,
+                        color: const Color(0xFFE97965),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                SegmentedButton<bool>(
+                  segments: const [
+                    ButtonSegment(value: false, label: Text('Today')),
+                    ButtonSegment(value: true, label: Text('All time')),
+                  ],
+                  selected: {_allTime},
+                  onSelectionChanged: (value) =>
+                      setState(() => _allTime = value.first),
+                ),
+                const SizedBox(height: 14),
+                if (visiblePhotos.isEmpty)
+                  const _EmptyGallery()
+                else
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 14,
+                          mainAxisSpacing: 14,
+                          childAspectRatio: 0.82,
+                        ),
+                    itemCount: visiblePhotos.length,
+                    itemBuilder: (context, index) => _PhotoTile(
+                      photo: visiblePhotos[index],
+                      onDelete: () => _delete(visiblePhotos[index]),
+                      onOpen: () => _showPhoto(visiblePhotos[index]),
+                    ),
+                  ),
+              ],
             ),
     );
   }
+
+  Future<void> _showPhoto(CapturedPhoto photo) async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(22),
+              child: Image.file(
+                File(photo.path),
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => const SizedBox(
+                  height: 220,
+                  child: Icon(
+                    Icons.image_not_supported_outlined,
+                    color: Colors.white,
+                    size: 48,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              photo.taskTitle ?? 'SnapFocus proof',
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            Text(
+              '${photo.capturedAt.month}/${photo.capturedAt.day} · ${photo.capturedAt.hour.toString().padLeft(2, '0')}:${photo.capturedAt.minute.toString().padLeft(2, '0')}',
+              style: const TextStyle(color: Colors.white70),
+            ),
+            TextButton.icon(
+              onPressed: () {
+                Clipboard.setData(
+                  ClipboardData(
+                    text:
+                        'SnapFocus proof: ${photo.taskTitle ?? 'Focus session'}',
+                  ),
+                );
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Proof details copied')),
+                );
+              },
+              icon: const Icon(Icons.share_outlined, color: Colors.white),
+              label: const Text(
+                'Copy proof details',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GalleryStat extends StatelessWidget {
+  const _GalleryStat({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: const Color(0xFFF1E3D7)),
+    ),
+    child: Row(
+      children: [
+        Icon(icon, color: color, size: 24),
+        const SizedBox(width: 10),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(color: Color(0xFF8D827B), fontSize: 12),
+            ),
+            Text(
+              value,
+              style: TextStyle(
+                color: color,
+                fontSize: 21,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
 }
 
 class _EmptyGallery extends StatelessWidget {
@@ -123,61 +305,74 @@ class _EmptyGallery extends StatelessWidget {
 }
 
 class _PhotoTile extends StatelessWidget {
-  const _PhotoTile({required this.photo, required this.onDelete});
+  const _PhotoTile({
+    required this.photo,
+    required this.onDelete,
+    required this.onOpen,
+  });
 
   final CapturedPhoto photo;
   final VoidCallback onDelete;
+  final VoidCallback onOpen;
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Image.file(
-            File(photo.path),
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) => Container(
-              color: const Color(0xFFF3E1D5),
-              alignment: Alignment.center,
-              child: const Icon(
-                Icons.image_not_supported_outlined,
-                color: Color(0xFFB88F80),
-              ),
-            ),
-          ),
-          Positioned(
-            top: 8,
-            right: 8,
-            child: CircleAvatar(
-              backgroundColor: Colors.black.withValues(alpha: 0.45),
-              child: IconButton(
-                onPressed: onDelete,
-                icon: const Icon(
-                  Icons.delete_outline,
-                  color: Colors.white,
-                  size: 19,
+    return GestureDetector(
+      onTap: onOpen,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.file(
+              File(photo.path),
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => Container(
+                color: const Color(0xFFF3E1D5),
+                alignment: Alignment.center,
+                child: const Icon(
+                  Icons.image_not_supported_outlined,
+                  color: Color(0xFFB88F80),
                 ),
               ),
             ),
-          ),
-          Positioned(
-            left: 10,
-            right: 10,
-            bottom: 10,
-            child: Text(
-              _dateLabel(photo.capturedAt),
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
+            Positioned(
+              top: 8,
+              right: 8,
+              child: CircleAvatar(
+                backgroundColor: Colors.black.withValues(alpha: 0.45),
+                child: IconButton(
+                  onPressed: onDelete,
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    color: Colors.white,
+                    size: 19,
+                  ),
+                ),
               ),
             ),
-          ),
-        ],
+            Positioned(
+              left: 10,
+              right: 10,
+              bottom: 10,
+              child: Text(
+                _dateLabel(photo.capturedAt),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   String _dateLabel(DateTime date) => '${date.month}/${date.day}';
 }
+
+bool _sameDay(DateTime first, DateTime second) =>
+    first.year == second.year &&
+    first.month == second.month &&
+    first.day == second.day;

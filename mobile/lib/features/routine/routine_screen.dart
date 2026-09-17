@@ -10,10 +10,16 @@ import '../gallery/gallery_screen.dart';
 import 'camera_capture_screen.dart';
 
 class RoutineScreen extends StatefulWidget {
-  const RoutineScreen({super.key, required this.controller, this.snapshots});
+  const RoutineScreen({
+    super.key,
+    required this.controller,
+    this.snapshots,
+    this.taskTitle,
+  });
 
   final RoutineController controller;
   final SnapshotRepository? snapshots;
+  final String? taskTitle;
 
   @override
   State<RoutineScreen> createState() => _RoutineScreenState();
@@ -41,6 +47,15 @@ class _RoutineScreenState extends State<RoutineScreen>
     WidgetsBinding.instance.removeObserver(this);
     _refreshTimer?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant RoutineScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller ||
+        widget.controller.state != _state) {
+      _state = widget.controller.state;
+    }
   }
 
   @override
@@ -104,6 +119,7 @@ class _RoutineScreenState extends State<RoutineScreen>
           controller: widget.controller,
           snapshots: snapshots,
           routine: state,
+          taskTitle: widget.taskTitle,
         ),
       ),
     );
@@ -243,11 +259,11 @@ class _RoutineScreenState extends State<RoutineScreen>
   }
 
   String _headline(RoutineState? state) {
-    if (state == null) return 'Ready when you are';
+    if (state == null) return widget.taskTitle ?? 'Ready when you are';
     if (state.status == RoutineStatus.locked) return 'Snapshot moment';
     if (state.phase == RoutinePhase.breakTime) return 'Break time';
     if (state.status == RoutineStatus.paused) return 'Focus paused';
-    return 'You are in the zone';
+    return widget.taskTitle ?? 'You are in the zone';
   }
 }
 

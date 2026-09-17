@@ -968,11 +968,730 @@ class SnapshotsCompanion extends UpdateCompanion<Snapshot> {
   }
 }
 
+class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TasksTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _durationMinutesMeta = const VerificationMeta(
+    'durationMinutes',
+  );
+  @override
+  late final GeneratedColumn<int> durationMinutes = GeneratedColumn<int>(
+    'duration_minutes',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _typeMeta = const VerificationMeta('type');
+  @override
+  late final GeneratedColumn<String> type = GeneratedColumn<String>(
+    'type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _colorMeta = const VerificationMeta('color');
+  @override
+  late final GeneratedColumn<String> color = GeneratedColumn<String>(
+    'color',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _scheduledTimeMeta = const VerificationMeta(
+    'scheduledTime',
+  );
+  @override
+  late final GeneratedColumn<String> scheduledTime = GeneratedColumn<String>(
+    'scheduled_time',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _dateMeta = const VerificationMeta('date');
+  @override
+  late final GeneratedColumn<String> date = GeneratedColumn<String>(
+    'date',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _repeatMeta = const VerificationMeta('repeat');
+  @override
+  late final GeneratedColumn<String> repeat = GeneratedColumn<String>(
+    'repeat',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _repeatUntilMeta = const VerificationMeta(
+    'repeatUntil',
+  );
+  @override
+  late final GeneratedColumn<String> repeatUntil = GeneratedColumn<String>(
+    'repeat_until',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _completedMeta = const VerificationMeta(
+    'completed',
+  );
+  @override
+  late final GeneratedColumn<bool> completed = GeneratedColumn<bool>(
+    'completed',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("completed" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _completedDatesMeta = const VerificationMeta(
+    'completedDates',
+  );
+  @override
+  late final GeneratedColumn<String> completedDates = GeneratedColumn<String>(
+    'completed_dates',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _positionMeta = const VerificationMeta(
+    'position',
+  );
+  @override
+  late final GeneratedColumn<int> position = GeneratedColumn<int>(
+    'position',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    title,
+    durationMinutes,
+    type,
+    color,
+    scheduledTime,
+    date,
+    repeat,
+    repeatUntil,
+    completed,
+    completedDates,
+    position,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'tasks';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Task> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('duration_minutes')) {
+      context.handle(
+        _durationMinutesMeta,
+        durationMinutes.isAcceptableOrUnknown(
+          data['duration_minutes']!,
+          _durationMinutesMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_durationMinutesMeta);
+    }
+    if (data.containsKey('type')) {
+      context.handle(
+        _typeMeta,
+        type.isAcceptableOrUnknown(data['type']!, _typeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_typeMeta);
+    }
+    if (data.containsKey('color')) {
+      context.handle(
+        _colorMeta,
+        color.isAcceptableOrUnknown(data['color']!, _colorMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_colorMeta);
+    }
+    if (data.containsKey('scheduled_time')) {
+      context.handle(
+        _scheduledTimeMeta,
+        scheduledTime.isAcceptableOrUnknown(
+          data['scheduled_time']!,
+          _scheduledTimeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('date')) {
+      context.handle(
+        _dateMeta,
+        date.isAcceptableOrUnknown(data['date']!, _dateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dateMeta);
+    }
+    if (data.containsKey('repeat')) {
+      context.handle(
+        _repeatMeta,
+        repeat.isAcceptableOrUnknown(data['repeat']!, _repeatMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_repeatMeta);
+    }
+    if (data.containsKey('repeat_until')) {
+      context.handle(
+        _repeatUntilMeta,
+        repeatUntil.isAcceptableOrUnknown(
+          data['repeat_until']!,
+          _repeatUntilMeta,
+        ),
+      );
+    }
+    if (data.containsKey('completed')) {
+      context.handle(
+        _completedMeta,
+        completed.isAcceptableOrUnknown(data['completed']!, _completedMeta),
+      );
+    }
+    if (data.containsKey('completed_dates')) {
+      context.handle(
+        _completedDatesMeta,
+        completedDates.isAcceptableOrUnknown(
+          data['completed_dates']!,
+          _completedDatesMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_completedDatesMeta);
+    }
+    if (data.containsKey('position')) {
+      context.handle(
+        _positionMeta,
+        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_positionMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Task map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Task(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      durationMinutes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}duration_minutes'],
+      )!,
+      type: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}type'],
+      )!,
+      color: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}color'],
+      )!,
+      scheduledTime: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}scheduled_time'],
+      ),
+      date: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}date'],
+      )!,
+      repeat: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}repeat'],
+      )!,
+      repeatUntil: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}repeat_until'],
+      ),
+      completed: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}completed'],
+      )!,
+      completedDates: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}completed_dates'],
+      )!,
+      position: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}position'],
+      )!,
+    );
+  }
+
+  @override
+  $TasksTable createAlias(String alias) {
+    return $TasksTable(attachedDatabase, alias);
+  }
+}
+
+class Task extends DataClass implements Insertable<Task> {
+  final String id;
+  final String title;
+  final int durationMinutes;
+  final String type;
+  final String color;
+  final String? scheduledTime;
+  final String date;
+  final String repeat;
+  final String? repeatUntil;
+  final bool completed;
+  final String completedDates;
+  final int position;
+  const Task({
+    required this.id,
+    required this.title,
+    required this.durationMinutes,
+    required this.type,
+    required this.color,
+    this.scheduledTime,
+    required this.date,
+    required this.repeat,
+    this.repeatUntil,
+    required this.completed,
+    required this.completedDates,
+    required this.position,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['title'] = Variable<String>(title);
+    map['duration_minutes'] = Variable<int>(durationMinutes);
+    map['type'] = Variable<String>(type);
+    map['color'] = Variable<String>(color);
+    if (!nullToAbsent || scheduledTime != null) {
+      map['scheduled_time'] = Variable<String>(scheduledTime);
+    }
+    map['date'] = Variable<String>(date);
+    map['repeat'] = Variable<String>(repeat);
+    if (!nullToAbsent || repeatUntil != null) {
+      map['repeat_until'] = Variable<String>(repeatUntil);
+    }
+    map['completed'] = Variable<bool>(completed);
+    map['completed_dates'] = Variable<String>(completedDates);
+    map['position'] = Variable<int>(position);
+    return map;
+  }
+
+  TasksCompanion toCompanion(bool nullToAbsent) {
+    return TasksCompanion(
+      id: Value(id),
+      title: Value(title),
+      durationMinutes: Value(durationMinutes),
+      type: Value(type),
+      color: Value(color),
+      scheduledTime: scheduledTime == null && nullToAbsent
+          ? const Value.absent()
+          : Value(scheduledTime),
+      date: Value(date),
+      repeat: Value(repeat),
+      repeatUntil: repeatUntil == null && nullToAbsent
+          ? const Value.absent()
+          : Value(repeatUntil),
+      completed: Value(completed),
+      completedDates: Value(completedDates),
+      position: Value(position),
+    );
+  }
+
+  factory Task.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Task(
+      id: serializer.fromJson<String>(json['id']),
+      title: serializer.fromJson<String>(json['title']),
+      durationMinutes: serializer.fromJson<int>(json['durationMinutes']),
+      type: serializer.fromJson<String>(json['type']),
+      color: serializer.fromJson<String>(json['color']),
+      scheduledTime: serializer.fromJson<String?>(json['scheduledTime']),
+      date: serializer.fromJson<String>(json['date']),
+      repeat: serializer.fromJson<String>(json['repeat']),
+      repeatUntil: serializer.fromJson<String?>(json['repeatUntil']),
+      completed: serializer.fromJson<bool>(json['completed']),
+      completedDates: serializer.fromJson<String>(json['completedDates']),
+      position: serializer.fromJson<int>(json['position']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'title': serializer.toJson<String>(title),
+      'durationMinutes': serializer.toJson<int>(durationMinutes),
+      'type': serializer.toJson<String>(type),
+      'color': serializer.toJson<String>(color),
+      'scheduledTime': serializer.toJson<String?>(scheduledTime),
+      'date': serializer.toJson<String>(date),
+      'repeat': serializer.toJson<String>(repeat),
+      'repeatUntil': serializer.toJson<String?>(repeatUntil),
+      'completed': serializer.toJson<bool>(completed),
+      'completedDates': serializer.toJson<String>(completedDates),
+      'position': serializer.toJson<int>(position),
+    };
+  }
+
+  Task copyWith({
+    String? id,
+    String? title,
+    int? durationMinutes,
+    String? type,
+    String? color,
+    Value<String?> scheduledTime = const Value.absent(),
+    String? date,
+    String? repeat,
+    Value<String?> repeatUntil = const Value.absent(),
+    bool? completed,
+    String? completedDates,
+    int? position,
+  }) => Task(
+    id: id ?? this.id,
+    title: title ?? this.title,
+    durationMinutes: durationMinutes ?? this.durationMinutes,
+    type: type ?? this.type,
+    color: color ?? this.color,
+    scheduledTime: scheduledTime.present
+        ? scheduledTime.value
+        : this.scheduledTime,
+    date: date ?? this.date,
+    repeat: repeat ?? this.repeat,
+    repeatUntil: repeatUntil.present ? repeatUntil.value : this.repeatUntil,
+    completed: completed ?? this.completed,
+    completedDates: completedDates ?? this.completedDates,
+    position: position ?? this.position,
+  );
+  Task copyWithCompanion(TasksCompanion data) {
+    return Task(
+      id: data.id.present ? data.id.value : this.id,
+      title: data.title.present ? data.title.value : this.title,
+      durationMinutes: data.durationMinutes.present
+          ? data.durationMinutes.value
+          : this.durationMinutes,
+      type: data.type.present ? data.type.value : this.type,
+      color: data.color.present ? data.color.value : this.color,
+      scheduledTime: data.scheduledTime.present
+          ? data.scheduledTime.value
+          : this.scheduledTime,
+      date: data.date.present ? data.date.value : this.date,
+      repeat: data.repeat.present ? data.repeat.value : this.repeat,
+      repeatUntil: data.repeatUntil.present
+          ? data.repeatUntil.value
+          : this.repeatUntil,
+      completed: data.completed.present ? data.completed.value : this.completed,
+      completedDates: data.completedDates.present
+          ? data.completedDates.value
+          : this.completedDates,
+      position: data.position.present ? data.position.value : this.position,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Task(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('durationMinutes: $durationMinutes, ')
+          ..write('type: $type, ')
+          ..write('color: $color, ')
+          ..write('scheduledTime: $scheduledTime, ')
+          ..write('date: $date, ')
+          ..write('repeat: $repeat, ')
+          ..write('repeatUntil: $repeatUntil, ')
+          ..write('completed: $completed, ')
+          ..write('completedDates: $completedDates, ')
+          ..write('position: $position')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    title,
+    durationMinutes,
+    type,
+    color,
+    scheduledTime,
+    date,
+    repeat,
+    repeatUntil,
+    completed,
+    completedDates,
+    position,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Task &&
+          other.id == this.id &&
+          other.title == this.title &&
+          other.durationMinutes == this.durationMinutes &&
+          other.type == this.type &&
+          other.color == this.color &&
+          other.scheduledTime == this.scheduledTime &&
+          other.date == this.date &&
+          other.repeat == this.repeat &&
+          other.repeatUntil == this.repeatUntil &&
+          other.completed == this.completed &&
+          other.completedDates == this.completedDates &&
+          other.position == this.position);
+}
+
+class TasksCompanion extends UpdateCompanion<Task> {
+  final Value<String> id;
+  final Value<String> title;
+  final Value<int> durationMinutes;
+  final Value<String> type;
+  final Value<String> color;
+  final Value<String?> scheduledTime;
+  final Value<String> date;
+  final Value<String> repeat;
+  final Value<String?> repeatUntil;
+  final Value<bool> completed;
+  final Value<String> completedDates;
+  final Value<int> position;
+  final Value<int> rowid;
+  const TasksCompanion({
+    this.id = const Value.absent(),
+    this.title = const Value.absent(),
+    this.durationMinutes = const Value.absent(),
+    this.type = const Value.absent(),
+    this.color = const Value.absent(),
+    this.scheduledTime = const Value.absent(),
+    this.date = const Value.absent(),
+    this.repeat = const Value.absent(),
+    this.repeatUntil = const Value.absent(),
+    this.completed = const Value.absent(),
+    this.completedDates = const Value.absent(),
+    this.position = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  TasksCompanion.insert({
+    required String id,
+    required String title,
+    required int durationMinutes,
+    required String type,
+    required String color,
+    this.scheduledTime = const Value.absent(),
+    required String date,
+    required String repeat,
+    this.repeatUntil = const Value.absent(),
+    this.completed = const Value.absent(),
+    required String completedDates,
+    required int position,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       title = Value(title),
+       durationMinutes = Value(durationMinutes),
+       type = Value(type),
+       color = Value(color),
+       date = Value(date),
+       repeat = Value(repeat),
+       completedDates = Value(completedDates),
+       position = Value(position);
+  static Insertable<Task> custom({
+    Expression<String>? id,
+    Expression<String>? title,
+    Expression<int>? durationMinutes,
+    Expression<String>? type,
+    Expression<String>? color,
+    Expression<String>? scheduledTime,
+    Expression<String>? date,
+    Expression<String>? repeat,
+    Expression<String>? repeatUntil,
+    Expression<bool>? completed,
+    Expression<String>? completedDates,
+    Expression<int>? position,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (title != null) 'title': title,
+      if (durationMinutes != null) 'duration_minutes': durationMinutes,
+      if (type != null) 'type': type,
+      if (color != null) 'color': color,
+      if (scheduledTime != null) 'scheduled_time': scheduledTime,
+      if (date != null) 'date': date,
+      if (repeat != null) 'repeat': repeat,
+      if (repeatUntil != null) 'repeat_until': repeatUntil,
+      if (completed != null) 'completed': completed,
+      if (completedDates != null) 'completed_dates': completedDates,
+      if (position != null) 'position': position,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  TasksCompanion copyWith({
+    Value<String>? id,
+    Value<String>? title,
+    Value<int>? durationMinutes,
+    Value<String>? type,
+    Value<String>? color,
+    Value<String?>? scheduledTime,
+    Value<String>? date,
+    Value<String>? repeat,
+    Value<String?>? repeatUntil,
+    Value<bool>? completed,
+    Value<String>? completedDates,
+    Value<int>? position,
+    Value<int>? rowid,
+  }) {
+    return TasksCompanion(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      durationMinutes: durationMinutes ?? this.durationMinutes,
+      type: type ?? this.type,
+      color: color ?? this.color,
+      scheduledTime: scheduledTime ?? this.scheduledTime,
+      date: date ?? this.date,
+      repeat: repeat ?? this.repeat,
+      repeatUntil: repeatUntil ?? this.repeatUntil,
+      completed: completed ?? this.completed,
+      completedDates: completedDates ?? this.completedDates,
+      position: position ?? this.position,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (durationMinutes.present) {
+      map['duration_minutes'] = Variable<int>(durationMinutes.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<String>(type.value);
+    }
+    if (color.present) {
+      map['color'] = Variable<String>(color.value);
+    }
+    if (scheduledTime.present) {
+      map['scheduled_time'] = Variable<String>(scheduledTime.value);
+    }
+    if (date.present) {
+      map['date'] = Variable<String>(date.value);
+    }
+    if (repeat.present) {
+      map['repeat'] = Variable<String>(repeat.value);
+    }
+    if (repeatUntil.present) {
+      map['repeat_until'] = Variable<String>(repeatUntil.value);
+    }
+    if (completed.present) {
+      map['completed'] = Variable<bool>(completed.value);
+    }
+    if (completedDates.present) {
+      map['completed_dates'] = Variable<String>(completedDates.value);
+    }
+    if (position.present) {
+      map['position'] = Variable<int>(position.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TasksCompanion(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('durationMinutes: $durationMinutes, ')
+          ..write('type: $type, ')
+          ..write('color: $color, ')
+          ..write('scheduledTime: $scheduledTime, ')
+          ..write('date: $date, ')
+          ..write('repeat: $repeat, ')
+          ..write('repeatUntil: $repeatUntil, ')
+          ..write('completed: $completed, ')
+          ..write('completedDates: $completedDates, ')
+          ..write('position: $position, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $ActiveRoutinesTable activeRoutines = $ActiveRoutinesTable(this);
   late final $SnapshotsTable snapshots = $SnapshotsTable(this);
+  late final $TasksTable tasks = $TasksTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -980,6 +1699,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     activeRoutines,
     snapshots,
+    tasks,
   ];
 }
 
@@ -1467,6 +2187,340 @@ typedef $$SnapshotsTableProcessedTableManager =
       Snapshot,
       PrefetchHooks Function()
     >;
+typedef $$TasksTableCreateCompanionBuilder =
+    TasksCompanion Function({
+      required String id,
+      required String title,
+      required int durationMinutes,
+      required String type,
+      required String color,
+      Value<String?> scheduledTime,
+      required String date,
+      required String repeat,
+      Value<String?> repeatUntil,
+      Value<bool> completed,
+      required String completedDates,
+      required int position,
+      Value<int> rowid,
+    });
+typedef $$TasksTableUpdateCompanionBuilder =
+    TasksCompanion Function({
+      Value<String> id,
+      Value<String> title,
+      Value<int> durationMinutes,
+      Value<String> type,
+      Value<String> color,
+      Value<String?> scheduledTime,
+      Value<String> date,
+      Value<String> repeat,
+      Value<String?> repeatUntil,
+      Value<bool> completed,
+      Value<String> completedDates,
+      Value<int> position,
+      Value<int> rowid,
+    });
+
+class $$TasksTableFilterComposer extends Composer<_$AppDatabase, $TasksTable> {
+  $$TasksTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get durationMinutes => $composableBuilder(
+    column: $table.durationMinutes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get color => $composableBuilder(
+    column: $table.color,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get scheduledTime => $composableBuilder(
+    column: $table.scheduledTime,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get repeat => $composableBuilder(
+    column: $table.repeat,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get repeatUntil => $composableBuilder(
+    column: $table.repeatUntil,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get completed => $composableBuilder(
+    column: $table.completed,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get completedDates => $composableBuilder(
+    column: $table.completedDates,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$TasksTableOrderingComposer
+    extends Composer<_$AppDatabase, $TasksTable> {
+  $$TasksTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get durationMinutes => $composableBuilder(
+    column: $table.durationMinutes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get color => $composableBuilder(
+    column: $table.color,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get scheduledTime => $composableBuilder(
+    column: $table.scheduledTime,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get repeat => $composableBuilder(
+    column: $table.repeat,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get repeatUntil => $composableBuilder(
+    column: $table.repeatUntil,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get completed => $composableBuilder(
+    column: $table.completed,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get completedDates => $composableBuilder(
+    column: $table.completedDates,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$TasksTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TasksTable> {
+  $$TasksTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<int> get durationMinutes => $composableBuilder(
+    column: $table.durationMinutes,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<String> get color =>
+      $composableBuilder(column: $table.color, builder: (column) => column);
+
+  GeneratedColumn<String> get scheduledTime => $composableBuilder(
+    column: $table.scheduledTime,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get date =>
+      $composableBuilder(column: $table.date, builder: (column) => column);
+
+  GeneratedColumn<String> get repeat =>
+      $composableBuilder(column: $table.repeat, builder: (column) => column);
+
+  GeneratedColumn<String> get repeatUntil => $composableBuilder(
+    column: $table.repeatUntil,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get completed =>
+      $composableBuilder(column: $table.completed, builder: (column) => column);
+
+  GeneratedColumn<String> get completedDates => $composableBuilder(
+    column: $table.completedDates,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get position =>
+      $composableBuilder(column: $table.position, builder: (column) => column);
+}
+
+class $$TasksTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TasksTable,
+          Task,
+          $$TasksTableFilterComposer,
+          $$TasksTableOrderingComposer,
+          $$TasksTableAnnotationComposer,
+          $$TasksTableCreateCompanionBuilder,
+          $$TasksTableUpdateCompanionBuilder,
+          (Task, BaseReferences<_$AppDatabase, $TasksTable, Task>),
+          Task,
+          PrefetchHooks Function()
+        > {
+  $$TasksTableTableManager(_$AppDatabase db, $TasksTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TasksTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TasksTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TasksTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<int> durationMinutes = const Value.absent(),
+                Value<String> type = const Value.absent(),
+                Value<String> color = const Value.absent(),
+                Value<String?> scheduledTime = const Value.absent(),
+                Value<String> date = const Value.absent(),
+                Value<String> repeat = const Value.absent(),
+                Value<String?> repeatUntil = const Value.absent(),
+                Value<bool> completed = const Value.absent(),
+                Value<String> completedDates = const Value.absent(),
+                Value<int> position = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TasksCompanion(
+                id: id,
+                title: title,
+                durationMinutes: durationMinutes,
+                type: type,
+                color: color,
+                scheduledTime: scheduledTime,
+                date: date,
+                repeat: repeat,
+                repeatUntil: repeatUntil,
+                completed: completed,
+                completedDates: completedDates,
+                position: position,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String title,
+                required int durationMinutes,
+                required String type,
+                required String color,
+                Value<String?> scheduledTime = const Value.absent(),
+                required String date,
+                required String repeat,
+                Value<String?> repeatUntil = const Value.absent(),
+                Value<bool> completed = const Value.absent(),
+                required String completedDates,
+                required int position,
+                Value<int> rowid = const Value.absent(),
+              }) => TasksCompanion.insert(
+                id: id,
+                title: title,
+                durationMinutes: durationMinutes,
+                type: type,
+                color: color,
+                scheduledTime: scheduledTime,
+                date: date,
+                repeat: repeat,
+                repeatUntil: repeatUntil,
+                completed: completed,
+                completedDates: completedDates,
+                position: position,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$TasksTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TasksTable,
+      Task,
+      $$TasksTableFilterComposer,
+      $$TasksTableOrderingComposer,
+      $$TasksTableAnnotationComposer,
+      $$TasksTableCreateCompanionBuilder,
+      $$TasksTableUpdateCompanionBuilder,
+      (Task, BaseReferences<_$AppDatabase, $TasksTable, Task>),
+      Task,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -1475,4 +2529,6 @@ class $AppDatabaseManager {
       $$ActiveRoutinesTableTableManager(_db, _db.activeRoutines);
   $$SnapshotsTableTableManager get snapshots =>
       $$SnapshotsTableTableManager(_db, _db.snapshots);
+  $$TasksTableTableManager get tasks =>
+      $$TasksTableTableManager(_db, _db.tasks);
 }

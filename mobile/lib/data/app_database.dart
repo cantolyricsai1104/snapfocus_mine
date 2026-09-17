@@ -29,13 +29,31 @@ class Snapshots extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [ActiveRoutines, Snapshots])
+class Tasks extends Table {
+  TextColumn get id => text()();
+  TextColumn get title => text()();
+  IntColumn get durationMinutes => integer()();
+  TextColumn get type => text()();
+  TextColumn get color => text()();
+  TextColumn get scheduledTime => text().nullable()();
+  TextColumn get date => text()();
+  TextColumn get repeat => text()();
+  TextColumn get repeatUntil => text().nullable()();
+  BoolColumn get completed => boolean().withDefault(const Constant(false))();
+  TextColumn get completedDates => text()();
+  IntColumn get position => integer()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+@DriftDatabase(tables: [ActiveRoutines, Snapshots, Tasks])
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor])
     : super(executor ?? driftDatabase(name: 'snapfocus'));
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -45,6 +63,9 @@ class AppDatabase extends _$AppDatabase {
     onUpgrade: (Migrator m, int from, int to) async {
       if (from < 2) {
         await m.createTable(snapshots);
+      }
+      if (from < 3) {
+        await m.createTable(tasks);
       }
     },
   );

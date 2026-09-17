@@ -15,11 +15,13 @@ class CameraCaptureScreen extends StatefulWidget {
     required this.controller,
     required this.snapshots,
     required this.routine,
+    this.taskTitle,
   });
 
   final RoutineController controller;
   final SnapshotRepository snapshots;
   final RoutineState routine;
+  final String? taskTitle;
 
   @override
   State<CameraCaptureScreen> createState() => _CameraCaptureScreenState();
@@ -81,6 +83,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
           path: savedImage.path,
           capturedAt: now,
           routineId: widget.routine.id,
+          taskTitle: widget.taskTitle,
         ),
       );
       if (mounted) Navigator.of(context).pop();
