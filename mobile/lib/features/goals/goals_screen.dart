@@ -6,16 +6,24 @@ import '../../domain/goal.dart';
 import '../../domain/goal_controller.dart';
 import '../../domain/task_controller.dart';
 import '../../domain/task.dart';
+import '../../domain/routine_ports.dart';
+import 'goal_proof_screen.dart';
 
 const _ink = Color(0xFF29313D);
 const _muted = Color(0xFF756C68);
 const _coral = Color(0xFFE97965);
 
 class GoalsScreen extends StatefulWidget {
-  const GoalsScreen({super.key, required this.controller, required this.tasks});
+  const GoalsScreen({
+    super.key,
+    required this.controller,
+    required this.tasks,
+    required this.snapshots,
+  });
 
   final GoalController controller;
   final TaskController tasks;
+  final SnapshotRepository snapshots;
 
   @override
   State<GoalsScreen> createState() => _GoalsScreenState();
@@ -67,8 +75,12 @@ class _GoalsScreenState extends State<GoalsScreen> {
                         goals: pillarGoals,
                         onAddGoal: () => _addGoal(pillar),
                         onEditPillar: () => _editPillar(pillar),
+                        onDuplicatePillar: () => _duplicatePillar(pillar),
                         onDeletePillar: () => _deletePillar(pillar),
                         onEditGoal: _editGoal,
+                        onDuplicateGoal: _duplicateGoal,
+                        onDeleteGoal: _deleteGoal,
+                        onOpenProof: _openProof,
                       );
                     }),
                   if (controller.pillars.isNotEmpty) ...[
@@ -88,6 +100,76 @@ class _GoalsScreenState extends State<GoalsScreen> {
   Future<void> _addPillar() => _editPillarSheet();
 
   Future<void> _editPillar(Pillar pillar) => _editPillarSheet(pillar);
+
+  Future<void> _duplicatePillar(Pillar pillar) async {
+    final now = DateTime.now();
+    final id = 'pillar-${now.microsecondsSinceEpoch}';
+    final duplicate = Pillar(
+      id: id,
+      name: '${pillar.name} (copy)',
+      color: pillar.color,
+      emoji: pillar.emoji,
+    );
+    await widget.controller.savePillar(duplicate);
+    final goals = widget.controller.goals
+        .where((goal) => goal.pillarId == pillar.id)
+        .toList(growable: false);
+    for (var index = 0; index < goals.length; index++) {
+      final goal = goals[index].copyWith(
+        id: 'goal-${now.microsecondsSinceEpoch}-$index',
+        pillarId: id,
+        currentValue: 0,
+        startedOn: _dateKey(DateTime.now()),
+      );
+      await widget.controller.saveGoal(goal);
+      await widget.tasks.syncGoalTask(goal, color: duplicate.color);
+    }
+  }
+
+  Future<void> _duplicateGoal(Goal goal) async {
+    final duplicate = goal.copyWith(
+      id: 'goal-${DateTime.now().microsecondsSinceEpoch}',
+      currentValue: 0,
+      startedOn: _dateKey(DateTime.now()),
+    );
+    await widget.controller.saveGoal(duplicate);
+    await widget.tasks.syncGoalTask(
+      duplicate,
+      color: widget.controller.pillarFor(duplicate)?.color ?? '#E97965',
+    );
+  }
+
+  Future<void> _deleteGoal(Goal goal) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Delete ${goal.name}?'),
+        content: const Text(
+          'This will also remove its scheduled task. This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await widget.tasks.removeGoalTask(goal.id);
+    await widget.snapshots.deleteNotes(goal.id);
+    await widget.controller.deleteGoal(goal.id);
+  }
+
+  Future<void> _openProof(Goal goal) => Navigator.of(context).push<void>(
+    MaterialPageRoute<void>(
+      builder: (_) => GoalProofScreen(goal: goal, repository: widget.snapshots),
+    ),
+  );
 
   Future<void> _editPillarSheet([Pillar? initial]) async {
     final result = await showModalBottomSheet<Pillar>(
@@ -121,6 +203,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
         (item) => item.pillarId == pillar.id,
       )) {
         await widget.tasks.removeGoalTask(goal.id);
+        await widget.snapshots.deleteNotes(goal.id);
       }
       await widget.controller.deletePillar(pillar.id);
     }
@@ -141,10 +224,16 @@ class _GoalsScreenState extends State<GoalsScreen> {
       builder: (_) => _GoalEditor(pillar: pillar, initial: initial),
     );
     if (result != null) {
-      await widget.controller.saveGoal(result);
+      final savedGoal =
+          initial != null &&
+              initial.taskTitle != null &&
+              result.name != initial.name
+          ? result.copyWith(taskTitle: result.name)
+          : result;
+      await widget.controller.saveGoal(savedGoal);
       await widget.tasks.syncGoalTask(
-        result,
-        color: widget.controller.pillarFor(result)?.color ?? '#E97965',
+        savedGoal,
+        color: widget.controller.pillarFor(savedGoal)?.color ?? '#E97965',
       );
     }
   }
@@ -156,16 +245,24 @@ class _PillarSection extends StatelessWidget {
     required this.goals,
     required this.onAddGoal,
     required this.onEditPillar,
+    required this.onDuplicatePillar,
     required this.onDeletePillar,
     required this.onEditGoal,
+    required this.onDuplicateGoal,
+    required this.onDeleteGoal,
+    required this.onOpenProof,
   });
 
   final Pillar pillar;
   final List<Goal> goals;
   final VoidCallback onAddGoal;
   final VoidCallback onEditPillar;
+  final VoidCallback onDuplicatePillar;
   final VoidCallback onDeletePillar;
   final ValueChanged<Goal> onEditGoal;
+  final ValueChanged<Goal> onDuplicateGoal;
+  final ValueChanged<Goal> onDeleteGoal;
+  final ValueChanged<Goal> onOpenProof;
 
   @override
   Widget build(BuildContext context) {
@@ -193,10 +290,17 @@ class _PillarSection extends StatelessWidget {
               ),
               PopupMenuButton<String>(
                 tooltip: 'Pillar options',
-                onSelected: (value) =>
-                    value == 'edit' ? onEditPillar() : onDeletePillar(),
+                onSelected: (value) {
+                  if (value == 'edit') onEditPillar();
+                  if (value == 'duplicate') onDuplicatePillar();
+                  if (value == 'delete') onDeletePillar();
+                },
                 itemBuilder: (_) => const [
                   PopupMenuItem(value: 'edit', child: Text('Edit Pillar')),
+                  PopupMenuItem(
+                    value: 'duplicate',
+                    child: Text('Duplicate Pillar'),
+                  ),
                   PopupMenuItem(value: 'delete', child: Text('Delete Pillar')),
                 ],
               ),
@@ -228,6 +332,10 @@ class _PillarSection extends StatelessWidget {
                 goal: goal,
                 color: color,
                 onTap: () => onEditGoal(goal),
+                onEdit: () => onEditGoal(goal),
+                onDuplicate: () => onDuplicateGoal(goal),
+                onDelete: () => onDeleteGoal(goal),
+                onProof: () => onOpenProof(goal),
               ),
             ),
             Align(
@@ -250,10 +358,18 @@ class _GoalCard extends StatelessWidget {
     required this.goal,
     required this.color,
     required this.onTap,
+    required this.onEdit,
+    required this.onDuplicate,
+    required this.onDelete,
+    required this.onProof,
   });
   final Goal goal;
   final Color color;
   final VoidCallback onTap;
+  final VoidCallback onEdit;
+  final VoidCallback onDuplicate;
+  final VoidCallback onDelete;
+  final VoidCallback onProof;
 
   @override
   Widget build(BuildContext context) => Card(
@@ -304,11 +420,33 @@ class _GoalCard extends StatelessWidget {
                     '${(goal.progress * 100).round()}%',
                     style: TextStyle(color: color, fontWeight: FontWeight.w800),
                   ),
+                IconButton(
+                  tooltip: 'View proof photos and notes',
+                  onPressed: onProof,
+                  icon: const Icon(Icons.photo_library_outlined),
+                ),
+                PopupMenuButton<String>(
+                  tooltip: 'Goal options',
+                  onSelected: (value) {
+                    if (value == 'edit') onEdit();
+                    if (value == 'duplicate') onDuplicate();
+                    if (value == 'delete') onDelete();
+                  },
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'edit', child: Text('Edit goal')),
+                    PopupMenuItem(
+                      value: 'duplicate',
+                      child: Text('Duplicate goal'),
+                    ),
+                    PopupMenuItem(value: 'delete', child: Text('Delete goal')),
+                  ],
+                ),
               ],
             ),
             const SizedBox(height: 9),
             Semantics(
-              label: '${goal.name}: ${(goal.progress * 100).round()}% of duration elapsed',
+              label:
+                  '${goal.name}: ${(goal.progress * 100).round()}% of planned focus time',
               child: LinearProgressIndicator(
                 value: goal.progress,
                 minHeight: 9,
@@ -528,9 +666,7 @@ class _GoalEditorState extends State<_GoalEditor> {
     super.initState();
     final goal = widget.initial;
     _name = TextEditingController(text: goal?.name ?? '');
-    _durationValue = TextEditingController(
-      text: '${goal?.durationValue ?? 3}',
-    );
+    _durationValue = TextEditingController(text: '${goal?.durationValue ?? 3}');
     _durationUnit = goal?.durationUnit ?? GoalDurationUnit.month;
     _taskTitle = TextEditingController(text: goal?.taskTitle ?? '');
     _scheduleTask = goal?.taskTitle != null;
@@ -563,9 +699,7 @@ class _GoalEditorState extends State<_GoalEditor> {
       if (name.isEmpty) return;
       if (duration == null || duration < 1 || duration > 1000) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Enter a duration from 1 to 1000.'),
-          ),
+          const SnackBar(content: Text('Enter a duration from 1 to 1000.')),
         );
         return;
       }
@@ -603,7 +737,9 @@ class _GoalEditorState extends State<_GoalEditor> {
           unit: 'minutes',
           durationValue: duration,
           durationUnit: _durationUnit,
-          durationMonths: _durationUnit == GoalDurationUnit.month ? duration : 0,
+          durationMonths: _durationUnit == GoalDurationUnit.month
+              ? duration
+              : 0,
           durationWeeks: _durationUnit == GoalDurationUnit.week ? duration : 0,
           startedOn: old == null || old.expired
               ? _dateKey(DateTime.now())
@@ -650,7 +786,10 @@ class _GoalEditorState extends State<_GoalEditor> {
               initialValue: _durationUnit,
               decoration: const InputDecoration(labelText: 'Unit'),
               items: GoalDurationUnit.values
-                  .map((unit) => DropdownMenuItem(value: unit, child: Text(unit.label)))
+                  .map(
+                    (unit) =>
+                        DropdownMenuItem(value: unit, child: Text(unit.label)),
+                  )
                   .toList(),
               onChanged: (unit) {
                 if (unit != null) setState(() => _durationUnit = unit);
@@ -661,7 +800,7 @@ class _GoalEditorState extends State<_GoalEditor> {
       ),
       const SizedBox(height: 6),
       const Text(
-        'The progress bar tracks time elapsed. Focus time is recorded separately.',
+        'Progress compares focused minutes with the time planned by your schedule.',
         style: TextStyle(color: _muted, fontSize: 12),
       ),
       const SizedBox(height: 12),
@@ -973,7 +1112,8 @@ Color _parseColor(String value) {
 }
 
 String _goalDurationLabel(Goal goal) {
-  final duration = '${goal.durationValue} ${goal.durationUnit.label}${goal.durationValue == 1 ? '' : 's'}';
+  final duration =
+      '${goal.durationValue} ${goal.durationUnit.label}${goal.durationValue == 1 ? '' : 's'}';
   final end = goal.endDate;
   if (end == null) return duration;
   return '$duration · ends ${end.month}/${end.day}/${end.year}';

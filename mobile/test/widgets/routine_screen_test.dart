@@ -63,9 +63,25 @@ class TestNotificationScheduler implements NotificationScheduler {
 
 class TestSnapshotRepository implements SnapshotRepository {
   final photos = <CapturedPhoto>[];
+  final notes = <String, ProofDayNote>{};
 
   @override
   Future<void> add(CapturedPhoto photo) async => photos.add(photo);
+
+  @override
+  Future<List<ProofDayNote>> listNotes(String goalId) async => notes.values
+      .where((note) => note.goalId == goalId)
+      .toList(growable: false);
+
+  @override
+  Future<void> saveNote(ProofDayNote note) async {
+    notes['${note.goalId}-${note.date}'] = note;
+  }
+
+  @override
+  Future<void> deleteNotes(String goalId) async {
+    notes.removeWhere((_, note) => note.goalId == goalId);
+  }
 
   @override
   Future<void> clearAll() async => photos.clear();

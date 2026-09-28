@@ -6,7 +6,6 @@ import 'domain/routine_ports.dart';
 import 'domain/task_controller.dart';
 import 'domain/goal_controller.dart';
 import 'features/calendar/calendar_screen.dart';
-import 'features/gallery/gallery_screen.dart';
 import 'features/routine/routine_screen.dart';
 import 'features/tasks/tasks_screen.dart';
 import 'features/goals/goals_screen.dart';
@@ -117,11 +116,13 @@ class _MobileShellState extends ConsumerState<_MobileShell> {
           GoalsScreen(
             controller: ref.watch(goalControllerProvider),
             tasks: tasks,
+            snapshots: snapshots,
           ),
           TasksScreen(
             controller: tasks,
             goals: ref.watch(goalControllerProvider),
             selectedDate: _selectedDate,
+            snapshots: snapshots,
             onStartTask: (task) async {
               await tasks.startTask(task);
               if (mounted) setState(() => _tab = 2);
@@ -131,6 +132,7 @@ class _MobileShellState extends ConsumerState<_MobileShell> {
             controller: routine,
             snapshots: snapshots,
             taskTitle: tasks.selectedTask?.title,
+            goalId: tasks.selectedTask?.goalId,
             taskDurationMinutes: tasks.selectedTask?.durationMinutes,
             onStop: tasks.saveActiveTaskProgress,
             onEndWithoutPhoto: tasks.completeActiveTaskWithoutPhoto,
@@ -144,7 +146,6 @@ class _MobileShellState extends ConsumerState<_MobileShell> {
               if (mounted) setState(() => _tab = 2);
             },
           ),
-          GalleryScreen(repository: snapshots),
         ],
       ),
       bottomNavigationBar: NavigationBar(
@@ -163,10 +164,6 @@ class _MobileShellState extends ConsumerState<_MobileShell> {
           NavigationDestination(
             icon: Icon(Icons.calendar_month_rounded),
             label: 'Calendar',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.auto_awesome_mosaic_rounded),
-            label: 'Proof',
           ),
         ],
       ),

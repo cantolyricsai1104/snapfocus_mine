@@ -7,7 +7,10 @@ import '../../domain/task.dart';
 import '../../domain/task_controller.dart';
 import '../../domain/goal.dart';
 import '../../domain/goal_controller.dart';
+import '../../domain/routine_ports.dart';
 import '../goals/goals_screen.dart';
+import '../goals/goal_proof_screen.dart';
+import '../gallery/gallery_screen.dart';
 
 class TasksScreen extends StatefulWidget {
   const TasksScreen({
@@ -16,12 +19,14 @@ class TasksScreen extends StatefulWidget {
     required this.goals,
     required this.selectedDate,
     required this.onStartTask,
+    required this.snapshots,
   });
 
   final TaskController controller;
   final GoalController goals;
   final ValueNotifier<DateTime> selectedDate;
   final ValueChanged<TaskBlock> onStartTask;
+  final SnapshotRepository snapshots;
 
   @override
   State<TasksScreen> createState() => _TasksScreenState();
@@ -211,6 +216,7 @@ class _TasksScreenState extends State<TasksScreen> {
                     onToggle: () => _toggleTask(task, date),
                     onMoveUp: () => _move(task, -1),
                     onMoveDown: () => _move(task, 1),
+                    onProof: () => _openProof(task),
                   );
                 }),
             ],
@@ -224,6 +230,17 @@ class _TasksScreenState extends State<TasksScreen> {
     if (state?.status == RoutineStatus.paused) return 'Paused';
     if (state?.phase == RoutinePhase.breakTime) return 'Break running';
     return 'Running now';
+  }
+
+  Future<void> _openProof(TaskBlock task) async {
+    final goal = widget.goals.findGoal(task.goalId);
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => goal == null
+            ? GalleryScreen(repository: widget.snapshots)
+            : GoalProofScreen(goal: goal, repository: widget.snapshots),
+      ),
+    );
   }
 
   Future<void> _addTask(String date) async {
@@ -276,10 +293,7 @@ class _TasksScreenState extends State<TasksScreen> {
   }
 
   Future<void> _toggleTask(TaskBlock task, String date) async {
-    final achieved = await widget.controller.toggleCompleted(
-      task.id,
-      date,
-    );
+    final achieved = await widget.controller.toggleCompleted(task.id, date);
     if (achieved != null && mounted) await showGoalAchieved(context, achieved);
   }
 }
@@ -589,6 +603,7 @@ class _TaskCard extends StatelessWidget {
     required this.onToggle,
     required this.onMoveUp,
     required this.onMoveDown,
+    required this.onProof,
   });
 
   final TaskBlock task;
@@ -602,6 +617,7 @@ class _TaskCard extends StatelessWidget {
   final VoidCallback onToggle;
   final VoidCallback onMoveUp;
   final VoidCallback onMoveDown;
+  final VoidCallback onProof;
 
   @override
   Widget build(BuildContext context) {
@@ -714,6 +730,11 @@ class _TaskCard extends StatelessWidget {
                       ),
                     ],
                   ),
+                ),
+                IconButton(
+                  tooltip: 'View proof photos and notes',
+                  onPressed: onProof,
+                  icon: const Icon(Icons.photo_library_outlined),
                 ),
                 PopupMenuButton<String>(
                   onSelected: (value) {

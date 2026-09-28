@@ -657,6 +657,15 @@ class $SnapshotsTable extends Snapshots
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _goalIdMeta = const VerificationMeta('goalId');
+  @override
+  late final GeneratedColumn<String> goalId = GeneratedColumn<String>(
+    'goal_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -664,6 +673,7 @@ class $SnapshotsTable extends Snapshots
     capturedAtMicros,
     routineId,
     taskTitle,
+    goalId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -713,6 +723,12 @@ class $SnapshotsTable extends Snapshots
         taskTitle.isAcceptableOrUnknown(data['task_title']!, _taskTitleMeta),
       );
     }
+    if (data.containsKey('goal_id')) {
+      context.handle(
+        _goalIdMeta,
+        goalId.isAcceptableOrUnknown(data['goal_id']!, _goalIdMeta),
+      );
+    }
     return context;
   }
 
@@ -742,6 +758,10 @@ class $SnapshotsTable extends Snapshots
         DriftSqlType.string,
         data['${effectivePrefix}task_title'],
       ),
+      goalId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}goal_id'],
+      ),
     );
   }
 
@@ -757,12 +777,14 @@ class Snapshot extends DataClass implements Insertable<Snapshot> {
   final int capturedAtMicros;
   final String? routineId;
   final String? taskTitle;
+  final String? goalId;
   const Snapshot({
     required this.id,
     required this.path,
     required this.capturedAtMicros,
     this.routineId,
     this.taskTitle,
+    this.goalId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -775,6 +797,9 @@ class Snapshot extends DataClass implements Insertable<Snapshot> {
     }
     if (!nullToAbsent || taskTitle != null) {
       map['task_title'] = Variable<String>(taskTitle);
+    }
+    if (!nullToAbsent || goalId != null) {
+      map['goal_id'] = Variable<String>(goalId);
     }
     return map;
   }
@@ -790,6 +815,9 @@ class Snapshot extends DataClass implements Insertable<Snapshot> {
       taskTitle: taskTitle == null && nullToAbsent
           ? const Value.absent()
           : Value(taskTitle),
+      goalId: goalId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(goalId),
     );
   }
 
@@ -804,6 +832,7 @@ class Snapshot extends DataClass implements Insertable<Snapshot> {
       capturedAtMicros: serializer.fromJson<int>(json['capturedAtMicros']),
       routineId: serializer.fromJson<String?>(json['routineId']),
       taskTitle: serializer.fromJson<String?>(json['taskTitle']),
+      goalId: serializer.fromJson<String?>(json['goalId']),
     );
   }
   @override
@@ -815,6 +844,7 @@ class Snapshot extends DataClass implements Insertable<Snapshot> {
       'capturedAtMicros': serializer.toJson<int>(capturedAtMicros),
       'routineId': serializer.toJson<String?>(routineId),
       'taskTitle': serializer.toJson<String?>(taskTitle),
+      'goalId': serializer.toJson<String?>(goalId),
     };
   }
 
@@ -824,12 +854,14 @@ class Snapshot extends DataClass implements Insertable<Snapshot> {
     int? capturedAtMicros,
     Value<String?> routineId = const Value.absent(),
     Value<String?> taskTitle = const Value.absent(),
+    Value<String?> goalId = const Value.absent(),
   }) => Snapshot(
     id: id ?? this.id,
     path: path ?? this.path,
     capturedAtMicros: capturedAtMicros ?? this.capturedAtMicros,
     routineId: routineId.present ? routineId.value : this.routineId,
     taskTitle: taskTitle.present ? taskTitle.value : this.taskTitle,
+    goalId: goalId.present ? goalId.value : this.goalId,
   );
   Snapshot copyWithCompanion(SnapshotsCompanion data) {
     return Snapshot(
@@ -840,6 +872,7 @@ class Snapshot extends DataClass implements Insertable<Snapshot> {
           : this.capturedAtMicros,
       routineId: data.routineId.present ? data.routineId.value : this.routineId,
       taskTitle: data.taskTitle.present ? data.taskTitle.value : this.taskTitle,
+      goalId: data.goalId.present ? data.goalId.value : this.goalId,
     );
   }
 
@@ -850,14 +883,15 @@ class Snapshot extends DataClass implements Insertable<Snapshot> {
           ..write('path: $path, ')
           ..write('capturedAtMicros: $capturedAtMicros, ')
           ..write('routineId: $routineId, ')
-          ..write('taskTitle: $taskTitle')
+          ..write('taskTitle: $taskTitle, ')
+          ..write('goalId: $goalId')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode =>
-      Object.hash(id, path, capturedAtMicros, routineId, taskTitle);
+      Object.hash(id, path, capturedAtMicros, routineId, taskTitle, goalId);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -866,7 +900,8 @@ class Snapshot extends DataClass implements Insertable<Snapshot> {
           other.path == this.path &&
           other.capturedAtMicros == this.capturedAtMicros &&
           other.routineId == this.routineId &&
-          other.taskTitle == this.taskTitle);
+          other.taskTitle == this.taskTitle &&
+          other.goalId == this.goalId);
 }
 
 class SnapshotsCompanion extends UpdateCompanion<Snapshot> {
@@ -875,6 +910,7 @@ class SnapshotsCompanion extends UpdateCompanion<Snapshot> {
   final Value<int> capturedAtMicros;
   final Value<String?> routineId;
   final Value<String?> taskTitle;
+  final Value<String?> goalId;
   final Value<int> rowid;
   const SnapshotsCompanion({
     this.id = const Value.absent(),
@@ -882,6 +918,7 @@ class SnapshotsCompanion extends UpdateCompanion<Snapshot> {
     this.capturedAtMicros = const Value.absent(),
     this.routineId = const Value.absent(),
     this.taskTitle = const Value.absent(),
+    this.goalId = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   SnapshotsCompanion.insert({
@@ -890,6 +927,7 @@ class SnapshotsCompanion extends UpdateCompanion<Snapshot> {
     required int capturedAtMicros,
     this.routineId = const Value.absent(),
     this.taskTitle = const Value.absent(),
+    this.goalId = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        path = Value(path),
@@ -900,6 +938,7 @@ class SnapshotsCompanion extends UpdateCompanion<Snapshot> {
     Expression<int>? capturedAtMicros,
     Expression<String>? routineId,
     Expression<String>? taskTitle,
+    Expression<String>? goalId,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -908,6 +947,7 @@ class SnapshotsCompanion extends UpdateCompanion<Snapshot> {
       if (capturedAtMicros != null) 'captured_at_micros': capturedAtMicros,
       if (routineId != null) 'routine_id': routineId,
       if (taskTitle != null) 'task_title': taskTitle,
+      if (goalId != null) 'goal_id': goalId,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -918,6 +958,7 @@ class SnapshotsCompanion extends UpdateCompanion<Snapshot> {
     Value<int>? capturedAtMicros,
     Value<String?>? routineId,
     Value<String?>? taskTitle,
+    Value<String?>? goalId,
     Value<int>? rowid,
   }) {
     return SnapshotsCompanion(
@@ -926,6 +967,7 @@ class SnapshotsCompanion extends UpdateCompanion<Snapshot> {
       capturedAtMicros: capturedAtMicros ?? this.capturedAtMicros,
       routineId: routineId ?? this.routineId,
       taskTitle: taskTitle ?? this.taskTitle,
+      goalId: goalId ?? this.goalId,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -948,6 +990,9 @@ class SnapshotsCompanion extends UpdateCompanion<Snapshot> {
     if (taskTitle.present) {
       map['task_title'] = Variable<String>(taskTitle.value);
     }
+    if (goalId.present) {
+      map['goal_id'] = Variable<String>(goalId.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -962,6 +1007,265 @@ class SnapshotsCompanion extends UpdateCompanion<Snapshot> {
           ..write('capturedAtMicros: $capturedAtMicros, ')
           ..write('routineId: $routineId, ')
           ..write('taskTitle: $taskTitle, ')
+          ..write('goalId: $goalId, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $GoalProofNotesTable extends GoalProofNotes
+    with TableInfo<$GoalProofNotesTable, GoalProofNote> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $GoalProofNotesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _goalIdMeta = const VerificationMeta('goalId');
+  @override
+  late final GeneratedColumn<String> goalId = GeneratedColumn<String>(
+    'goal_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _dateMeta = const VerificationMeta('date');
+  @override
+  late final GeneratedColumn<String> date = GeneratedColumn<String>(
+    'date',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [goalId, date, note];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'goal_proof_notes';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<GoalProofNote> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('goal_id')) {
+      context.handle(
+        _goalIdMeta,
+        goalId.isAcceptableOrUnknown(data['goal_id']!, _goalIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_goalIdMeta);
+    }
+    if (data.containsKey('date')) {
+      context.handle(
+        _dateMeta,
+        date.isAcceptableOrUnknown(data['date']!, _dateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dateMeta);
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {goalId, date};
+  @override
+  GoalProofNote map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return GoalProofNote(
+      goalId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}goal_id'],
+      )!,
+      date: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}date'],
+      )!,
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
+      ),
+    );
+  }
+
+  @override
+  $GoalProofNotesTable createAlias(String alias) {
+    return $GoalProofNotesTable(attachedDatabase, alias);
+  }
+}
+
+class GoalProofNote extends DataClass implements Insertable<GoalProofNote> {
+  final String goalId;
+  final String date;
+  final String? note;
+  const GoalProofNote({required this.goalId, required this.date, this.note});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['goal_id'] = Variable<String>(goalId);
+    map['date'] = Variable<String>(date);
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
+    return map;
+  }
+
+  GoalProofNotesCompanion toCompanion(bool nullToAbsent) {
+    return GoalProofNotesCompanion(
+      goalId: Value(goalId),
+      date: Value(date),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+    );
+  }
+
+  factory GoalProofNote.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return GoalProofNote(
+      goalId: serializer.fromJson<String>(json['goalId']),
+      date: serializer.fromJson<String>(json['date']),
+      note: serializer.fromJson<String?>(json['note']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'goalId': serializer.toJson<String>(goalId),
+      'date': serializer.toJson<String>(date),
+      'note': serializer.toJson<String?>(note),
+    };
+  }
+
+  GoalProofNote copyWith({
+    String? goalId,
+    String? date,
+    Value<String?> note = const Value.absent(),
+  }) => GoalProofNote(
+    goalId: goalId ?? this.goalId,
+    date: date ?? this.date,
+    note: note.present ? note.value : this.note,
+  );
+  GoalProofNote copyWithCompanion(GoalProofNotesCompanion data) {
+    return GoalProofNote(
+      goalId: data.goalId.present ? data.goalId.value : this.goalId,
+      date: data.date.present ? data.date.value : this.date,
+      note: data.note.present ? data.note.value : this.note,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('GoalProofNote(')
+          ..write('goalId: $goalId, ')
+          ..write('date: $date, ')
+          ..write('note: $note')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(goalId, date, note);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is GoalProofNote &&
+          other.goalId == this.goalId &&
+          other.date == this.date &&
+          other.note == this.note);
+}
+
+class GoalProofNotesCompanion extends UpdateCompanion<GoalProofNote> {
+  final Value<String> goalId;
+  final Value<String> date;
+  final Value<String?> note;
+  final Value<int> rowid;
+  const GoalProofNotesCompanion({
+    this.goalId = const Value.absent(),
+    this.date = const Value.absent(),
+    this.note = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  GoalProofNotesCompanion.insert({
+    required String goalId,
+    required String date,
+    this.note = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : goalId = Value(goalId),
+       date = Value(date);
+  static Insertable<GoalProofNote> custom({
+    Expression<String>? goalId,
+    Expression<String>? date,
+    Expression<String>? note,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (goalId != null) 'goal_id': goalId,
+      if (date != null) 'date': date,
+      if (note != null) 'note': note,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  GoalProofNotesCompanion copyWith({
+    Value<String>? goalId,
+    Value<String>? date,
+    Value<String?>? note,
+    Value<int>? rowid,
+  }) {
+    return GoalProofNotesCompanion(
+      goalId: goalId ?? this.goalId,
+      date: date ?? this.date,
+      note: note ?? this.note,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (goalId.present) {
+      map['goal_id'] = Variable<String>(goalId.value);
+    }
+    if (date.present) {
+      map['date'] = Variable<String>(date.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('GoalProofNotesCompanion(')
+          ..write('goalId: $goalId, ')
+          ..write('date: $date, ')
+          ..write('note: $note, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -3254,6 +3558,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $ActiveRoutinesTable activeRoutines = $ActiveRoutinesTable(this);
   late final $SnapshotsTable snapshots = $SnapshotsTable(this);
+  late final $GoalProofNotesTable goalProofNotes = $GoalProofNotesTable(this);
   late final $TasksTable tasks = $TasksTable(this);
   late final $PillarsTable pillars = $PillarsTable(this);
   late final $GoalsTable goals = $GoalsTable(this);
@@ -3264,6 +3569,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     activeRoutines,
     snapshots,
+    goalProofNotes,
     tasks,
     pillars,
     goals,
@@ -3565,6 +3871,7 @@ typedef $$SnapshotsTableCreateCompanionBuilder =
       required int capturedAtMicros,
       Value<String?> routineId,
       Value<String?> taskTitle,
+      Value<String?> goalId,
       Value<int> rowid,
     });
 typedef $$SnapshotsTableUpdateCompanionBuilder =
@@ -3574,6 +3881,7 @@ typedef $$SnapshotsTableUpdateCompanionBuilder =
       Value<int> capturedAtMicros,
       Value<String?> routineId,
       Value<String?> taskTitle,
+      Value<String?> goalId,
       Value<int> rowid,
     });
 
@@ -3608,6 +3916,11 @@ class $$SnapshotsTableFilterComposer
 
   ColumnFilters<String> get taskTitle => $composableBuilder(
     column: $table.taskTitle,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get goalId => $composableBuilder(
+    column: $table.goalId,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -3645,6 +3958,11 @@ class $$SnapshotsTableOrderingComposer
     column: $table.taskTitle,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get goalId => $composableBuilder(
+    column: $table.goalId,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SnapshotsTableAnnotationComposer
@@ -3672,6 +3990,9 @@ class $$SnapshotsTableAnnotationComposer
 
   GeneratedColumn<String> get taskTitle =>
       $composableBuilder(column: $table.taskTitle, builder: (column) => column);
+
+  GeneratedColumn<String> get goalId =>
+      $composableBuilder(column: $table.goalId, builder: (column) => column);
 }
 
 class $$SnapshotsTableTableManager
@@ -3707,6 +4028,7 @@ class $$SnapshotsTableTableManager
                 Value<int> capturedAtMicros = const Value.absent(),
                 Value<String?> routineId = const Value.absent(),
                 Value<String?> taskTitle = const Value.absent(),
+                Value<String?> goalId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SnapshotsCompanion(
                 id: id,
@@ -3714,6 +4036,7 @@ class $$SnapshotsTableTableManager
                 capturedAtMicros: capturedAtMicros,
                 routineId: routineId,
                 taskTitle: taskTitle,
+                goalId: goalId,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -3723,6 +4046,7 @@ class $$SnapshotsTableTableManager
                 required int capturedAtMicros,
                 Value<String?> routineId = const Value.absent(),
                 Value<String?> taskTitle = const Value.absent(),
+                Value<String?> goalId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SnapshotsCompanion.insert(
                 id: id,
@@ -3730,6 +4054,7 @@ class $$SnapshotsTableTableManager
                 capturedAtMicros: capturedAtMicros,
                 routineId: routineId,
                 taskTitle: taskTitle,
+                goalId: goalId,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -3752,6 +4077,170 @@ typedef $$SnapshotsTableProcessedTableManager =
       $$SnapshotsTableUpdateCompanionBuilder,
       (Snapshot, BaseReferences<_$AppDatabase, $SnapshotsTable, Snapshot>),
       Snapshot,
+      PrefetchHooks Function()
+    >;
+typedef $$GoalProofNotesTableCreateCompanionBuilder =
+    GoalProofNotesCompanion Function({
+      required String goalId,
+      required String date,
+      Value<String?> note,
+      Value<int> rowid,
+    });
+typedef $$GoalProofNotesTableUpdateCompanionBuilder =
+    GoalProofNotesCompanion Function({
+      Value<String> goalId,
+      Value<String> date,
+      Value<String?> note,
+      Value<int> rowid,
+    });
+
+class $$GoalProofNotesTableFilterComposer
+    extends Composer<_$AppDatabase, $GoalProofNotesTable> {
+  $$GoalProofNotesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get goalId => $composableBuilder(
+    column: $table.goalId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$GoalProofNotesTableOrderingComposer
+    extends Composer<_$AppDatabase, $GoalProofNotesTable> {
+  $$GoalProofNotesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get goalId => $composableBuilder(
+    column: $table.goalId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$GoalProofNotesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $GoalProofNotesTable> {
+  $$GoalProofNotesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get goalId =>
+      $composableBuilder(column: $table.goalId, builder: (column) => column);
+
+  GeneratedColumn<String> get date =>
+      $composableBuilder(column: $table.date, builder: (column) => column);
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+}
+
+class $$GoalProofNotesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $GoalProofNotesTable,
+          GoalProofNote,
+          $$GoalProofNotesTableFilterComposer,
+          $$GoalProofNotesTableOrderingComposer,
+          $$GoalProofNotesTableAnnotationComposer,
+          $$GoalProofNotesTableCreateCompanionBuilder,
+          $$GoalProofNotesTableUpdateCompanionBuilder,
+          (
+            GoalProofNote,
+            BaseReferences<_$AppDatabase, $GoalProofNotesTable, GoalProofNote>,
+          ),
+          GoalProofNote,
+          PrefetchHooks Function()
+        > {
+  $$GoalProofNotesTableTableManager(
+    _$AppDatabase db,
+    $GoalProofNotesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$GoalProofNotesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$GoalProofNotesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$GoalProofNotesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> goalId = const Value.absent(),
+                Value<String> date = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => GoalProofNotesCompanion(
+                goalId: goalId,
+                date: date,
+                note: note,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String goalId,
+                required String date,
+                Value<String?> note = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => GoalProofNotesCompanion.insert(
+                goalId: goalId,
+                date: date,
+                note: note,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$GoalProofNotesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $GoalProofNotesTable,
+      GoalProofNote,
+      $$GoalProofNotesTableFilterComposer,
+      $$GoalProofNotesTableOrderingComposer,
+      $$GoalProofNotesTableAnnotationComposer,
+      $$GoalProofNotesTableCreateCompanionBuilder,
+      $$GoalProofNotesTableUpdateCompanionBuilder,
+      (
+        GoalProofNote,
+        BaseReferences<_$AppDatabase, $GoalProofNotesTable, GoalProofNote>,
+      ),
+      GoalProofNote,
       PrefetchHooks Function()
     >;
 typedef $$TasksTableCreateCompanionBuilder =
@@ -4832,6 +5321,8 @@ class $AppDatabaseManager {
       $$ActiveRoutinesTableTableManager(_db, _db.activeRoutines);
   $$SnapshotsTableTableManager get snapshots =>
       $$SnapshotsTableTableManager(_db, _db.snapshots);
+  $$GoalProofNotesTableTableManager get goalProofNotes =>
+      $$GoalProofNotesTableTableManager(_db, _db.goalProofNotes);
   $$TasksTableTableManager get tasks =>
       $$TasksTableTableManager(_db, _db.tasks);
   $$PillarsTableTableManager get pillars =>

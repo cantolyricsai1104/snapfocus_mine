@@ -24,9 +24,19 @@ class Snapshots extends Table {
   IntColumn get capturedAtMicros => integer()();
   TextColumn get routineId => text().nullable()();
   TextColumn get taskTitle => text().nullable()();
+  TextColumn get goalId => text().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
+}
+
+class GoalProofNotes extends Table {
+  TextColumn get goalId => text()();
+  TextColumn get date => text()();
+  TextColumn get note => text().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {goalId, date};
 }
 
 class Tasks extends Table {
@@ -87,7 +97,9 @@ class Goals extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [ActiveRoutines, Snapshots, Tasks, Pillars, Goals])
+@DriftDatabase(
+  tables: [ActiveRoutines, Snapshots, GoalProofNotes, Tasks, Pillars, Goals],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor])
     : super(
@@ -102,7 +114,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -144,7 +156,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 9 && from >= 4) {
         final columns = await customSelect('PRAGMA table_info(goals)').get();
-        final names = columns.map((column) => column.read<String>('name')).toSet();
+        final names = columns
+            .map((column) => column.read<String>('name'))
+            .toSet();
         if (!names.contains('duration_value')) {
           await customStatement(
             'ALTER TABLE goals ADD COLUMN duration_value INTEGER NOT NULL DEFAULT 3',
@@ -161,6 +175,10 @@ class AppDatabase extends _$AppDatabase {
         await customStatement(
           "UPDATE goals SET duration_unit = 'month' WHERE duration_unit IS NULL",
         );
+      }
+      if (from < 10) {
+        if (from >= 2) await m.addColumn(snapshots, snapshots.goalId);
+        await m.createTable(goalProofNotes);
       }
     },
   );

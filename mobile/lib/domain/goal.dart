@@ -87,25 +87,51 @@ class Goal {
 
   double get progress {
     final end = endDate;
-    if (end == null || startedOn == null) return 0;
+    if (end == null || startedOn == null || taskTitle == null) return 0;
     final start = DateTime.parse(startedOn!);
-    final total = end.difference(start).inSeconds;
-    if (total <= 0) return 0;
-    final elapsed = DateTime.now().difference(start).inSeconds;
-    return (elapsed / total).clamp(0.0, 1.0).toDouble();
+    final lastDate = DateTime(end.year, end.month, end.day);
+    final schedule = TaskBlock(
+      id: 'goal-progress-$id',
+      title: taskTitle!,
+      durationMinutes: taskDurationMinutes,
+      type: TaskType.focus,
+      color: '#000000',
+      scheduledTime: taskTime ?? '09:00',
+      date: startedOn!,
+      repeat: taskRepeat,
+      repeatUntil: _dateKey(lastDate),
+      goalId: id,
+      repeatDays: taskWeekdays,
+      repeatMonthDay: taskMonthDay,
+    );
+    var plannedMinutes = 0;
+    for (
+      var day = DateTime(start.year, start.month, start.day);
+      !day.isAfter(lastDate);
+      day = day.add(const Duration(days: 1))
+    ) {
+      if (schedule.isScheduledOn(_dateKey(day))) {
+        plannedMinutes += taskDurationMinutes;
+      }
+    }
+    if (plannedMinutes <= 0) return 0;
+    return (currentValue / plannedMinutes).clamp(0.0, 1.0).toDouble();
   }
 
-  bool get achieved => endDate != null && !DateTime.now().isBefore(endDate!);
+  bool get achieved => progress >= 1;
   bool get expired {
     final end = endDate;
     if (end == null) return false;
     final today = DateTime.now();
-    return DateTime(today.year, today.month, today.day).isAfter(
-      DateTime(end.year, end.month, end.day),
-    );
+    return DateTime(
+      today.year,
+      today.month,
+      today.day,
+    ).isAfter(DateTime(end.year, end.month, end.day));
   }
 
   Goal copyWith({
+    String? id,
     String? pillarId,
     String? name,
     GoalMetricType? metricType,
@@ -124,7 +150,7 @@ class Goal {
     TaskRepeat? taskRepeat,
     int? taskMonthDay,
   }) => Goal(
-    id: id,
+    id: id ?? this.id,
     pillarId: pillarId ?? this.pillarId,
     name: name ?? this.name,
     metricType: metricType ?? this.metricType,
@@ -148,6 +174,9 @@ class Goal {
     taskMonthDay: taskMonthDay ?? this.taskMonthDay,
   );
 }
+
+String _dateKey(DateTime date) =>
+    '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 
 DateTime _addMonths(DateTime date, int months) {
   final monthIndex = date.month - 1 + months;

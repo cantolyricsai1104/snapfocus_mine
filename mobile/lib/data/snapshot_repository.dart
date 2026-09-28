@@ -20,9 +20,54 @@ class DriftSnapshotRepository implements SnapshotRepository {
             capturedAtMicros: photo.capturedAt.microsecondsSinceEpoch,
             routineId: Value(photo.routineId),
             taskTitle: Value(photo.taskTitle),
+            goalId: Value(photo.goalId),
           ),
         );
   }
+
+  @override
+  Future<void> saveNote(ProofDayNote note) async {
+    await _ensureNotesTable();
+    await database
+        .into(database.goalProofNotes)
+        .insertOnConflictUpdate(
+          GoalProofNotesCompanion.insert(
+            goalId: note.goalId,
+            date: note.date,
+            note: Value(note.note),
+          ),
+        );
+  }
+
+  @override
+  Future<List<ProofDayNote>> listNotes(String goalId) async {
+    await _ensureNotesTable();
+    final rows =
+        await (database.select(database.goalProofNotes)
+              ..where((row) => row.goalId.equals(goalId))
+              ..orderBy([(row) => OrderingTerm.asc(row.date)]))
+            .get();
+    return rows
+        .map(
+          (row) =>
+              ProofDayNote(goalId: row.goalId, date: row.date, note: row.note),
+        )
+        .toList(growable: false);
+  }
+
+  @override
+  Future<void> deleteNotes(String goalId) async {
+    await _ensureNotesTable();
+    await (database.delete(
+      database.goalProofNotes,
+    )..where((note) => note.goalId.equals(goalId))).go();
+  }
+
+  Future<void> _ensureNotesTable() => database.customStatement(
+    'CREATE TABLE IF NOT EXISTS goal_proof_notes ('
+    'goal_id TEXT NOT NULL, date TEXT NOT NULL, note TEXT NULL, '
+    'PRIMARY KEY (goal_id, date))',
+  );
 
   @override
   Future<List<CapturedPhoto>> list() async {
@@ -52,5 +97,6 @@ CapturedPhoto _toPhoto(Snapshot row) {
     capturedAt: DateTime.fromMicrosecondsSinceEpoch(row.capturedAtMicros),
     routineId: row.routineId,
     taskTitle: row.taskTitle,
+    goalId: row.goalId,
   );
 }

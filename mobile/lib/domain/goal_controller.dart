@@ -94,6 +94,12 @@ class GoalController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> deleteGoal(String id) async {
+    _goals = _goals.where((goal) => goal.id != id).toList();
+    await _repository.replaceGoals(_goals);
+    notifyListeners();
+  }
+
   Future<bool> addProgress(String id, double amount) async {
     final existing = findGoal(id);
     if (existing == null || amount <= 0) return false;

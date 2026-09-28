@@ -17,6 +17,7 @@ class RoutineScreen extends StatefulWidget {
     required this.controller,
     this.snapshots,
     this.taskTitle,
+    this.goalId,
     this.taskDurationMinutes,
     this.onStop,
     this.onEndWithoutPhoto,
@@ -25,6 +26,7 @@ class RoutineScreen extends StatefulWidget {
   final RoutineController controller;
   final SnapshotRepository? snapshots;
   final String? taskTitle;
+  final String? goalId;
   final int? taskDurationMinutes;
   final Future<void> Function()? onStop;
   final Future<Goal?> Function()? onEndWithoutPhoto;
@@ -133,6 +135,7 @@ class _RoutineScreenState extends State<RoutineScreen>
           snapshots: snapshots,
           routine: state,
           taskTitle: widget.taskTitle,
+          goalId: widget.goalId,
         ),
       ),
     );
@@ -367,42 +370,63 @@ class FitnessBall extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final growth = state == FitnessBallState.idle
-        ? 0.86
-        : 0.86 + progress * 0.14;
+    final inflation = state == FitnessBallState.growing
+        ? progress.clamp(0.0, 1.0)
+        : 1.0;
+    final disableAnimations = MediaQuery.of(context).disableAnimations;
+    final mascot = SizedBox(
+      width: 230,
+      height: 230,
+      child: CustomPaint(
+        painter: _FitnessBallPainter(state: state, inflation: inflation),
+      ),
+    );
+    if (disableAnimations) return mascot;
+
     return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.86, end: growth),
-      duration: const Duration(milliseconds: 500),
-      curve: Curves.easeOutBack,
-      builder: (context, scale, child) =>
-          Transform.scale(scale: scale, child: child),
-      child: SizedBox(
+      tween: Tween(begin: 0, end: inflation),
+      duration: const Duration(milliseconds: 900),
+      curve: Curves.easeInOutCubic,
+      builder: (context, value, _) => SizedBox(
         width: 230,
         height: 230,
-        child: CustomPaint(painter: _FitnessBallPainter(state: state)),
+        child: CustomPaint(
+          painter: _FitnessBallPainter(state: state, inflation: value),
+        ),
       ),
     );
   }
 }
 
 class _FitnessBallPainter extends CustomPainter {
-  const _FitnessBallPainter({required this.state});
+  const _FitnessBallPainter({required this.state, required this.inflation});
 
   final FitnessBallState state;
+  final double inflation;
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2 + 4);
     final radius = size.width * 0.36;
+    final progress = inflation.clamp(0.0, 1.0);
+    final horizontalScale = 0.62 + progress * 0.38;
+    final verticalScale = 0.48 + progress * 0.52;
     final shadow = Paint()..color = const Color(0x1A9B6E58);
     canvas.drawOval(
       Rect.fromCenter(
-        center: Offset(center.dx, center.dy + radius + 19),
-        width: radius * 1.45,
+        center: Offset(center.dx, center.dy + radius * verticalScale + 19),
+        width: radius * horizontalScale * 1.45,
         height: 18,
       ),
       shadow,
     );
+
+    // Flatten the whole character around its center so the limbs and face
+    // follow the body as it inflates, instead of merely scaling the outer edge.
+    canvas.save();
+    canvas.translate(center.dx, center.dy);
+    canvas.scale(horizontalScale, verticalScale);
+    canvas.translate(-center.dx, -center.dy);
 
     final body = Paint()
       ..shader = const LinearGradient(
@@ -460,6 +484,25 @@ class _FitnessBallPainter extends CustomPainter {
       Offset(center.dx - radius - 18, center.dy + 4),
       limb,
     );
+
+    if (progress < 0.35) {
+      final crease = Paint()
+        ..color = const Color(
+          0xFF8D3F49,
+        ).withValues(alpha: (1 - progress / 0.35) * 0.35)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..strokeCap = StrokeCap.round;
+      final fold = Path()
+        ..moveTo(center.dx - 18, center.dy + radius * 0.68)
+        ..quadraticBezierTo(
+          center.dx,
+          center.dy + radius * 0.78,
+          center.dx + 18,
+          center.dy + radius * 0.68,
+        );
+      canvas.drawPath(fold, crease);
+    }
     canvas.drawLine(
       Offset(center.dx + radius - 2, center.dy + 20),
       Offset(center.dx + radius + 18, center.dy + 4),
@@ -500,9 +543,10 @@ class _FitnessBallPainter extends CustomPainter {
         key,
       );
     }
+    canvas.restore();
   }
 
   @override
   bool shouldRepaint(covariant _FitnessBallPainter oldDelegate) =>
-      oldDelegate.state != state;
+      oldDelegate.state != state || oldDelegate.inflation != inflation;
 }
