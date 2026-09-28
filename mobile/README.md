@@ -72,6 +72,17 @@ flutter pub get
 
 看到 `newer versions available` 不代表安裝失敗。只要最後顯示 `Got dependencies!`，就代表目前版本的依賴已成功安裝。
 
+### Supabase 登入設定
+
+本機的 `supabase.local.json` 已設定專案 URL 與 publishable key，並由 `.gitignore` 排除，不會提交到 Git。啟動 App 時將設定檔傳入 Flutter：
+
+```sh
+flutter pub get
+flutter run --dart-define-from-file=supabase.local.json
+```
+
+登入頁支援 email/password 註冊、登入和密碼重設。Supabase 若要求 email confirmation，新使用者需要先點擊確認信中的連結，再回到 App 登入。發佈建置也必須用相同的 `--dart-define-from-file` 參數傳入設定。不要把 service-role key 放進 App。
+
 ## 啟動 Android 版本
 
 ### 方法 A：使用 Android Studio

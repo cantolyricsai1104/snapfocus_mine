@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app.dart';
 import 'data/app_database.dart';
@@ -19,6 +20,19 @@ class SystemRoutineClock implements RoutineClock {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
+  const supabasePublishableKey = String.fromEnvironment(
+    'SUPABASE_PUBLISHABLE_KEY',
+  );
+  SupabaseClient? authClient;
+  if (supabaseUrl.isNotEmpty && supabasePublishableKey.isNotEmpty) {
+    await Supabase.initialize(
+      url: supabaseUrl,
+      publishableKey: supabasePublishableKey,
+    );
+    authClient = Supabase.instance.client;
+  }
 
   final database = AppDatabase();
   final notificationPlatform = FlutterNotificationPlatform();
@@ -49,6 +63,7 @@ Future<void> main() async {
       snapshots: snapshotRepository,
       tasks: taskController,
       goals: goalController,
+      authClient: authClient,
     ),
   );
 }

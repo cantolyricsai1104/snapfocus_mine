@@ -213,12 +213,15 @@ class _GoalProofScreenState extends State<GoalProofScreen> {
     final dateKey = _dateKey(date);
     final photo = photos.isEmpty ? null : photos.first;
     final note = _notes[dateKey]?.note;
-    final hasProof = photo != null;
+    final hasNote = note != null && note.trim().isNotEmpty;
+    final hasProof = photo != null || hasNote;
+    final proofStatus = hasProof ? 'proof complete' : 'proof missing';
+    final photoStatus = photo != null ? 'photo saved' : 'no photo';
+    final noteStatus = hasNote ? 'note saved' : 'no note';
     final color = hasProof ? const Color(0xFF4E946B) : const Color(0xFFD86F62);
     return Semantics(
       button: true,
-      label:
-          '${_longDate(date)}, ${hasProof ? 'photo saved' : 'no photo'}, ${note == null || note.isEmpty ? 'no note' : 'note saved'}',
+      label: '${_longDate(date)}, $photoStatus, $noteStatus, $proofStatus',
       child: SizedBox(
         width: 64,
         child: Material(

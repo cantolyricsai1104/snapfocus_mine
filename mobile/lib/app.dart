@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'domain/routine_controller.dart';
 import 'domain/routine_ports.dart';
@@ -9,6 +10,7 @@ import 'features/calendar/calendar_screen.dart';
 import 'features/routine/routine_screen.dart';
 import 'features/tasks/tasks_screen.dart';
 import 'features/goals/goals_screen.dart';
+import 'features/auth/login_screen.dart';
 
 final routineControllerProvider = Provider<RoutineController>((ref) {
   throw UnimplementedError('The app must provide a RoutineController.');
@@ -33,12 +35,14 @@ class SnapFocusApp extends StatelessWidget {
     required this.snapshots,
     required this.tasks,
     required this.goals,
+    this.authClient,
   });
 
   final RoutineController controller;
   final SnapshotRepository snapshots;
   final TaskController tasks;
   final GoalController goals;
+  final SupabaseClient? authClient;
 
   @override
   Widget build(BuildContext context) {
@@ -49,13 +53,15 @@ class SnapFocusApp extends StatelessWidget {
         taskControllerProvider.overrideWithValue(tasks),
         goalControllerProvider.overrideWithValue(goals),
       ],
-      child: const _AppView(),
+      child: _AppView(authClient: authClient),
     );
   }
 }
 
 class _AppView extends ConsumerWidget {
-  const _AppView();
+  const _AppView({required this.authClient});
+
+  final SupabaseClient? authClient;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -75,7 +81,9 @@ class _AppView extends ConsumerWidget {
           elevation: 0,
         ),
       ),
-      home: const _MobileShell(),
+      home: authClient == null
+          ? const _MobileShell()
+          : SupabaseAuthGate(client: authClient!, child: const _MobileShell()),
     );
   }
 }
