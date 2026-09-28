@@ -1,11 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../domain/task.dart';
 import '../../domain/task_controller.dart';
 import '../../domain/goal_controller.dart';
 import '../tasks/tasks_screen.dart';
+import '../auth/login_screen.dart';
 
 enum CalendarViewMode { day, month, year }
 
@@ -16,12 +18,14 @@ class CalendarScreen extends StatefulWidget {
     required this.goals,
     required this.selectedDate,
     required this.onStartTask,
+    this.authClient,
   });
 
   final TaskController controller;
   final GoalController goals;
   final ValueNotifier<DateTime> selectedDate;
   final ValueChanged<TaskBlock> onStartTask;
+  final SupabaseClient? authClient;
 
   @override
   State<CalendarScreen> createState() => _CalendarScreenState();
@@ -60,6 +64,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
           appBar: AppBar(
             title: const Text('Calendar'),
             actions: [
+              if (widget.authClient != null)
+                SignOutAction(client: widget.authClient!),
               IconButton(
                 onPressed: () => widget.selectedDate.value = DateTime.now(),
                 tooltip: 'Today',

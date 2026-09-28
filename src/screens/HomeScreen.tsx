@@ -25,7 +25,7 @@ import {
   isTaskCompletedOnDate,
 } from '../utils/dateUtils';
 
-export const HomeScreen: React.FC = () => {
+export const HomeScreen: React.FC<{ onSignOut?: () => void }> = ({ onSignOut }) => {
   const {
     tasks,
     activeTaskIndex,
@@ -192,16 +192,31 @@ export const HomeScreen: React.FC = () => {
             </h1>
           </div>
 
-          <button
-            type="button"
-            id="test-break-alarm-btn"
-            onClick={triggerFastTestTransition}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-300 border border-red-500/30 text-xs font-semibold active:scale-95 transition-all shadow-sm"
-            title="Immediately triggers the Break Ends Alarm & Photo Lock for testing"
-          >
-            <AlertTriangle className="w-3.5 h-3.5 text-red-400 animate-pulse" />
-            <span>Test Alarm</span>
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            {onSignOut && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm('Log out of SnapFocus?')) onSignOut();
+                }}
+                className="flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-neutral-200 hover:bg-white/10"
+                aria-label="Log out"
+              >
+                <span aria-hidden="true">↪</span>
+                <span>Log out</span>
+              </button>
+            )}
+            <button
+              type="button"
+              id="test-break-alarm-btn"
+              onClick={triggerFastTestTransition}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-300 border border-red-500/30 text-xs font-semibold active:scale-95 transition-all shadow-sm"
+              title="Immediately triggers the Break Ends Alarm & Photo Lock for testing"
+            >
+              <AlertTriangle className="w-3.5 h-3.5 text-red-400 animate-pulse" />
+              <span>Test</span>
+            </button>
+          </div>
         </div>
 
         {/* Focus and Break Summary Stat Cards */}

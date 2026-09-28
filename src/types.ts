@@ -12,6 +12,9 @@ export interface TaskBlock {
   repeatUntil?: string; // YYYY-MM-DD
   completed?: boolean;
   completedDates?: string[]; // Array of YYYY-MM-DD strings
+  goalId?: string;
+  repeatDays?: number[];
+  repeatMonthDay?: number;
 }
 
 export interface FocusSnapshot {

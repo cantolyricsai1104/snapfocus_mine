@@ -54,6 +54,8 @@ class TaskController extends ChangeNotifier {
   }
 
   Future<void> restore() async {
+    _loading = true;
+    notifyListeners();
     await _goals.restore();
     final stored = await _repository.list();
     final source = stored.where((task) => !_isUntouchedStarterTask(task));

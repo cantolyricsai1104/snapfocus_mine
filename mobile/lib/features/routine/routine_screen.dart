@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../domain/routine.dart';
 import '../../domain/routine_controller.dart';
@@ -10,6 +11,7 @@ import '../../domain/goal.dart';
 import '../gallery/gallery_screen.dart';
 import '../goals/goals_screen.dart';
 import 'camera_capture_screen.dart';
+import '../auth/login_screen.dart';
 
 class RoutineScreen extends StatefulWidget {
   const RoutineScreen({
@@ -21,6 +23,7 @@ class RoutineScreen extends StatefulWidget {
     this.taskDurationMinutes,
     this.onStop,
     this.onEndWithoutPhoto,
+    this.authClient,
   });
 
   final RoutineController controller;
@@ -30,6 +33,7 @@ class RoutineScreen extends StatefulWidget {
   final int? taskDurationMinutes;
   final Future<void> Function()? onStop;
   final Future<Goal?> Function()? onEndWithoutPhoto;
+  final SupabaseClient? authClient;
 
   @override
   State<RoutineScreen> createState() => _RoutineScreenState();
@@ -156,6 +160,8 @@ class _RoutineScreenState extends State<RoutineScreen>
       appBar: AppBar(
         title: const Text('SnapFocus'),
         actions: [
+          if (widget.authClient != null)
+            SignOutAction(client: widget.authClient!),
           if (widget.snapshots != null)
             IconButton(
               tooltip: 'Photo gallery',

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../domain/routine.dart';
 import '../../domain/task.dart';
@@ -11,6 +12,7 @@ import '../../domain/routine_ports.dart';
 import '../goals/goals_screen.dart';
 import '../goals/goal_proof_screen.dart';
 import '../gallery/gallery_screen.dart';
+import '../auth/login_screen.dart';
 
 class TasksScreen extends StatefulWidget {
   const TasksScreen({
@@ -20,6 +22,7 @@ class TasksScreen extends StatefulWidget {
     required this.selectedDate,
     required this.onStartTask,
     required this.snapshots,
+    this.authClient,
   });
 
   final TaskController controller;
@@ -27,6 +30,7 @@ class TasksScreen extends StatefulWidget {
   final ValueNotifier<DateTime> selectedDate;
   final ValueChanged<TaskBlock> onStartTask;
   final SnapshotRepository snapshots;
+  final SupabaseClient? authClient;
 
   @override
   State<TasksScreen> createState() => _TasksScreenState();
@@ -98,6 +102,8 @@ class _TasksScreenState extends State<TasksScreen> {
           appBar: AppBar(
             title: const Text('SnapFocus'),
             actions: [
+              if (widget.authClient != null)
+                SignOutAction(client: widget.authClient!),
               IconButton(
                 tooltip: 'Add block',
                 onPressed: () => _addTask(date),

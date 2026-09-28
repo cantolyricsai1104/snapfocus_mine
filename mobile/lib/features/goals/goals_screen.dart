@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../domain/goal.dart';
 import '../../domain/goal_controller.dart';
@@ -8,6 +9,7 @@ import '../../domain/task_controller.dart';
 import '../../domain/task.dart';
 import '../../domain/routine_ports.dart';
 import 'goal_proof_screen.dart';
+import '../auth/login_screen.dart';
 
 const _ink = Color(0xFF29313D);
 const _muted = Color(0xFF756C68);
@@ -19,11 +21,13 @@ class GoalsScreen extends StatefulWidget {
     required this.controller,
     required this.tasks,
     required this.snapshots,
+    this.authClient,
   });
 
   final GoalController controller;
   final TaskController tasks;
   final SnapshotRepository snapshots;
+  final SupabaseClient? authClient;
 
   @override
   State<GoalsScreen> createState() => _GoalsScreenState();
@@ -46,6 +50,8 @@ class _GoalsScreenState extends State<GoalsScreen> {
         appBar: AppBar(
           title: const Text('Pillars & goals'),
           actions: [
+            if (widget.authClient != null)
+              SignOutAction(client: widget.authClient!),
             IconButton(
               tooltip: 'Add a Pillar',
               onPressed: _addPillar,

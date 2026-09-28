@@ -75,15 +75,22 @@ class _GoalProofScreenState extends State<GoalProofScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (photo != null && !kIsWeb) ...[
+            if (photo != null) ...[
               ClipRRect(
                 borderRadius: BorderRadius.circular(14),
-                child: Image.file(
-                  File(photo.path),
-                  height: 180,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => const SizedBox.shrink(),
-                ),
+                child: kIsWeb
+                    ? Image.network(
+                        photo.path,
+                        height: 180,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                      )
+                    : Image.file(
+                        File(photo.path),
+                        height: 180,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                      ),
               ),
               const SizedBox(height: 12),
             ],
@@ -243,20 +250,32 @@ class _GoalProofScreenState extends State<GoalProofScreen> {
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  if (photo != null && !kIsWeb)
+                  if (photo != null)
                     ClipRRect(
                       borderRadius: BorderRadius.circular(7),
-                      child: Image.file(
-                        File(photo.path),
-                        width: 52,
-                        height: 34,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => Icon(
-                          Icons.broken_image_outlined,
-                          color: color,
-                          size: 22,
-                        ),
-                      ),
+                      child: kIsWeb
+                          ? Image.network(
+                              photo.path,
+                              width: 52,
+                              height: 34,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) => Icon(
+                                Icons.broken_image_outlined,
+                                color: color,
+                                size: 22,
+                              ),
+                            )
+                          : Image.file(
+                              File(photo.path),
+                              width: 52,
+                              height: 34,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) => Icon(
+                                Icons.broken_image_outlined,
+                                color: color,
+                                size: 22,
+                              ),
+                            ),
                     )
                   else
                     Icon(

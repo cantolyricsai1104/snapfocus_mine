@@ -14,9 +14,57 @@ class SupabaseAuthGate extends StatelessWidget {
   @override
   Widget build(BuildContext context) => StreamBuilder<AuthState>(
     stream: client.auth.onAuthStateChange,
-    builder: (context, snapshot) => client.auth.currentSession == null
-        ? LoginScreen(client: client)
-        : child,
+    builder: (context, snapshot) {
+      final session = snapshot.data?.session ?? client.auth.currentSession;
+      return session == null
+          ? LoginScreen(client: client)
+          : KeyedSubtree(key: ValueKey(session.user.id), child: child);
+    },
+  );
+}
+
+class SignOutAction extends StatelessWidget {
+  const SignOutAction({super.key, required this.client});
+
+  final SupabaseClient client;
+
+  @override
+  Widget build(BuildContext context) => TextButton.icon(
+    icon: const Icon(Icons.logout_rounded, size: 19),
+    label: const Text('Log out'),
+    style: TextButton.styleFrom(
+      foregroundColor: Theme.of(context).colorScheme.onSurface,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+    ),
+    onPressed: () async {
+      final shouldSignOut = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Log out?'),
+          content: const Text('You can sign back in at any time.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Log out'),
+            ),
+          ],
+        ),
+      );
+      if (shouldSignOut != true) return;
+      try {
+        await client.auth.signOut();
+      } on AuthException catch (error) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Could not log out: ${error.message}')),
+          );
+        }
+      }
+    },
   );
 }
 
@@ -79,7 +127,10 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) setState(() => _error = exception.message);
     } catch (_) {
       if (mounted) {
-        setState(() => _error = 'Could not connect. Check your connection and try again.');
+        setState(
+          () => _error =
+              'Could not connect. Check your connection and try again.',
+        );
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -103,7 +154,9 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       await widget.client.auth.resetPasswordForEmail(email);
       if (mounted) {
-        setState(() => _message = 'If an account exists, a reset link is on its way.');
+        setState(
+          () => _message = 'If an account exists, a reset link is on its way.',
+        );
       }
     } on AuthException catch (exception) {
       if (mounted) setState(() => _error = exception.message);
@@ -183,7 +236,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         textInputAction: TextInputAction.next,
                         autofillHints: const [AutofillHints.email],
                         autocorrect: false,
-                        decoration: _decoration('Email', Icons.mail_outline_rounded),
+                        decoration: _decoration(
+                          'Email',
+                          Icons.mail_outline_rounded,
+                        ),
                         validator: (value) {
                           final email = value?.trim() ?? '';
                           if (email.isEmpty || !email.contains('@')) {
@@ -208,24 +264,25 @@ class _LoginScreenState extends State<LoginScreen> {
                         onFieldSubmitted: (_) {
                           if (!_creatingAccount) _submit();
                         },
-                        decoration: _decoration(
-                          'Password',
-                          Icons.lock_outline_rounded,
-                        ).copyWith(
-                          suffixIcon: IconButton(
-                            tooltip: _obscurePassword
-                                ? 'Show password'
-                                : 'Hide password',
-                            onPressed: () => setState(
-                              () => _obscurePassword = !_obscurePassword,
+                        decoration:
+                            _decoration(
+                              'Password',
+                              Icons.lock_outline_rounded,
+                            ).copyWith(
+                              suffixIcon: IconButton(
+                                tooltip: _obscurePassword
+                                    ? 'Show password'
+                                    : 'Hide password',
+                                onPressed: () => setState(
+                                  () => _obscurePassword = !_obscurePassword,
+                                ),
+                                icon: Icon(
+                                  _obscurePassword
+                                      ? Icons.visibility_outlined
+                                      : Icons.visibility_off_outlined,
+                                ),
+                              ),
                             ),
-                            icon: Icon(
-                              _obscurePassword
-                                  ? Icons.visibility_outlined
-                                  : Icons.visibility_off_outlined,
-                            ),
-                          ),
-                        ),
                         validator: (value) {
                           if ((value ?? '').length < 8) {
                             return 'Use at least 8 characters.';
@@ -289,7 +346,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                 )
                               : Text(
-                                  _creatingAccount ? 'Create account' : 'Sign in',
+                                  _creatingAccount
+                                      ? 'Create account'
+                                      : 'Sign in',
                                   style: const TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w700,
@@ -364,7 +423,9 @@ class _Notice extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(
-              isError ? Icons.error_outline_rounded : Icons.check_circle_outline,
+              isError
+                  ? Icons.error_outline_rounded
+                  : Icons.check_circle_outline,
               color: color,
               size: 20,
             ),

@@ -48,6 +48,12 @@ const INITIAL_TASKS: TaskBlock[] = [
 ];
 
 const STORAGE_KEY = 'snapfocus_tasks_v2';
+const LOCAL_DATA_OWNER_KEY = 'snapfocus_tasks_owner_v1';
+let activeDataUserId: string | null = null;
+
+function scopedStorageKey() {
+  return activeDataUserId ? `${STORAGE_KEY}:${activeDataUserId}` : STORAGE_KEY;
+}
 
 function sortTasksChronologically(tasks: TaskBlock[]): TaskBlock[] {
   return [...tasks].sort((a, b) => {
@@ -75,7 +81,7 @@ function loadStoredTasks(): TaskBlock[] {
 
   if (typeof window === 'undefined') return sortTasksChronologically(ensureDefaults(INITIAL_TASKS));
   try {
-    const data = localStorage.getItem(STORAGE_KEY);
+    const data = localStorage.getItem(scopedStorageKey());
     if (data) {
       const parsed = JSON.parse(data);
       if (Array.isArray(parsed) && parsed.length > 0) {
@@ -91,7 +97,7 @@ function loadStoredTasks(): TaskBlock[] {
 function saveTasks(tasks: TaskBlock[]) {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+    localStorage.setItem(scopedStorageKey(), JSON.stringify(tasks));
   } catch {
     // ignore
   }
@@ -502,3 +508,31 @@ export const useTaskStore = create<TaskStoreState>((set, get) => ({
     }
   },
 }));
+
+/** Loads this account's local cache; legacy browser data is claimed only once. */
+export function setTaskDataUser(userId: string | null) {
+  if (activeDataUserId === userId) return;
+  activeDataUserId = userId;
+  if (!userId || typeof window === 'undefined') return;
+
+  try {
+    const scoped = localStorage.getItem(scopedStorageKey());
+    let serialized = scoped;
+    if (!serialized && !localStorage.getItem(LOCAL_DATA_OWNER_KEY)) {
+      serialized = localStorage.getItem(STORAGE_KEY);
+      localStorage.setItem(LOCAL_DATA_OWNER_KEY, userId);
+    }
+    const parsed = serialized ? JSON.parse(serialized) : null;
+    const tasks = Array.isArray(parsed)
+      ? sortTasksChronologically(parsed)
+      : sortTasksChronologically(INITIAL_TASKS.map((item) => ({
+          ...item,
+          date: item.date || getTodayDateString(),
+          repeat: item.repeat || 'none',
+        })));
+    saveTasks(tasks);
+    useTaskStore.setState({ tasks, activeTaskIndex: 0 });
+  } catch {
+    // If browser storage is unavailable, keep the in-memory list.
+  }
+}

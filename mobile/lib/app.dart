@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -83,13 +85,18 @@ class _AppView extends ConsumerWidget {
       ),
       home: authClient == null
           ? const _MobileShell()
-          : SupabaseAuthGate(client: authClient!, child: const _MobileShell()),
+          : SupabaseAuthGate(
+              client: authClient!,
+              child: _MobileShell(authClient: authClient!),
+            ),
     );
   }
 }
 
 class _MobileShell extends ConsumerStatefulWidget {
-  const _MobileShell();
+  const _MobileShell({this.authClient});
+
+  final SupabaseClient? authClient;
 
   @override
   ConsumerState<_MobileShell> createState() => _MobileShellState();
@@ -98,17 +105,78 @@ class _MobileShell extends ConsumerStatefulWidget {
 class _MobileShellState extends ConsumerState<_MobileShell> {
   int _tab = 1;
   late final ValueNotifier<DateTime> _selectedDate;
+  RealtimeChannel? _syncChannel;
+  bool _refreshingAccountData = false;
 
   @override
   void initState() {
     super.initState();
     _selectedDate = ValueNotifier(DateTime.now());
+    if (widget.authClient?.auth.currentUser != null) {
+      ref.read(goalControllerProvider).reloadForAccount();
+      _subscribeToCloudChanges();
+    }
   }
 
   @override
   void dispose() {
     _selectedDate.dispose();
+    final channel = _syncChannel;
+    if (channel != null) unawaited(widget.authClient?.removeChannel(channel));
     super.dispose();
+  }
+
+  void _subscribeToCloudChanges() {
+    final client = widget.authClient;
+    final userId = client?.auth.currentUser?.id;
+    if (client == null || userId == null) return;
+    _syncChannel = client.channel('snapfocus-mobile-$userId')
+      ..onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: 'tasks',
+        callback: (_) => _reloadCloudData(),
+      )
+      ..onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: 'pillars',
+        callback: (_) => _reloadCloudData(),
+      )
+      ..onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: 'goals',
+        callback: (_) => _reloadCloudData(),
+      )
+      ..onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: 'proof_photos',
+        callback: (_) => _reloadCloudData(),
+      )
+      ..onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: 'proof_notes',
+        callback: (_) => _reloadCloudData(),
+      )
+      ..subscribe((status, _) {
+        if (status == RealtimeSubscribeStatus.subscribed) {
+          _reloadCloudData();
+        }
+      });
+  }
+
+  Future<void> _reloadCloudData() async {
+    if (_refreshingAccountData || !mounted) return;
+    _refreshingAccountData = true;
+    try {
+      await ref.read(goalControllerProvider).reloadForAccount();
+      await ref.read(taskControllerProvider).restore();
+    } finally {
+      _refreshingAccountData = false;
+    }
   }
 
   @override
@@ -125,12 +193,14 @@ class _MobileShellState extends ConsumerState<_MobileShell> {
             controller: ref.watch(goalControllerProvider),
             tasks: tasks,
             snapshots: snapshots,
+            authClient: widget.authClient,
           ),
           TasksScreen(
             controller: tasks,
             goals: ref.watch(goalControllerProvider),
             selectedDate: _selectedDate,
             snapshots: snapshots,
+            authClient: widget.authClient,
             onStartTask: (task) async {
               await tasks.startTask(task);
               if (mounted) setState(() => _tab = 2);
@@ -144,11 +214,13 @@ class _MobileShellState extends ConsumerState<_MobileShell> {
             taskDurationMinutes: tasks.selectedTask?.durationMinutes,
             onStop: tasks.saveActiveTaskProgress,
             onEndWithoutPhoto: tasks.completeActiveTaskWithoutPhoto,
+            authClient: widget.authClient,
           ),
           CalendarScreen(
             controller: tasks,
             goals: ref.watch(goalControllerProvider),
             selectedDate: _selectedDate,
+            authClient: widget.authClient,
             onStartTask: (task) async {
               await tasks.startTask(task);
               if (mounted) setState(() => _tab = 2);

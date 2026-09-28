@@ -73,6 +73,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
   }
 
   Future<void> _deleteFile(String path) async {
+    if (kIsWeb) return;
     final file = File(path);
     if (await file.exists()) await file.delete();
   }
@@ -183,18 +184,33 @@ class _GalleryScreenState extends State<GalleryScreen> {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(22),
-              child: Image.file(
-                File(photo.path),
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => const SizedBox(
-                  height: 220,
-                  child: Icon(
-                    Icons.image_not_supported_outlined,
-                    color: Colors.white,
-                    size: 48,
-                  ),
-                ),
-              ),
+              child: kIsWeb
+                  ? Image.network(
+                      photo.path,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          const SizedBox(
+                            height: 220,
+                            child: Icon(
+                              Icons.image_not_supported_outlined,
+                              color: Colors.white,
+                              size: 48,
+                            ),
+                          ),
+                    )
+                  : Image.file(
+                      File(photo.path),
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          const SizedBox(
+                            height: 220,
+                            child: Icon(
+                              Icons.image_not_supported_outlined,
+                              color: Colors.white,
+                              size: 48,
+                            ),
+                          ),
+                    ),
             ),
             const SizedBox(height: 10),
             Text(
@@ -506,18 +522,31 @@ class _PhotoTile extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Image.file(
-              File(photo.path),
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
-                color: const Color(0xFFF3E1D5),
-                alignment: Alignment.center,
-                child: const Icon(
-                  Icons.image_not_supported_outlined,
-                  color: Color(0xFFB88F80),
-                ),
-              ),
-            ),
+            kIsWeb
+                ? Image.network(
+                    photo.path,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      color: const Color(0xFFF3E1D5),
+                      alignment: Alignment.center,
+                      child: const Icon(
+                        Icons.image_not_supported_outlined,
+                        color: Color(0xFFB88F80),
+                      ),
+                    ),
+                  )
+                : Image.file(
+                    File(photo.path),
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      color: const Color(0xFFF3E1D5),
+                      alignment: Alignment.center,
+                      child: const Icon(
+                        Icons.image_not_supported_outlined,
+                        color: Color(0xFFB88F80),
+                      ),
+                    ),
+                  ),
             Positioned(
               top: 8,
               right: 8,

@@ -35,6 +35,13 @@ class GoalController extends ChangeNotifier {
 
   Future<void> restore() => _restoreFuture ??= _restore();
 
+  Future<void> reloadForAccount() {
+    _restoreFuture = null;
+    _loading = true;
+    notifyListeners();
+    return restore();
+  }
+
   Future<void> _restore() async {
     _pillars = await _repository.listPillars();
     final stored = await _repository.listGoals();

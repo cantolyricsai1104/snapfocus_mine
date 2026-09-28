@@ -3,6 +3,13 @@ import { FocusSnapshot } from '../types';
 import { Haptics } from '../services/haptics';
 
 const GALLERY_STORAGE_KEY = 'snapfocus_gallery_snapshots_v1';
+let activeGalleryUserId: string | null = null;
+
+function scopedGalleryStorageKey() {
+  return activeGalleryUserId
+    ? `${GALLERY_STORAGE_KEY}:${activeGalleryUserId}`
+    : GALLERY_STORAGE_KEY;
+}
 
 // Seed initial authentic workspace proof photos
 const INITIAL_SNAPSHOTS: FocusSnapshot[] = [
@@ -35,7 +42,7 @@ const INITIAL_SNAPSHOTS: FocusSnapshot[] = [
 function loadStoredSnapshots(): FocusSnapshot[] {
   if (typeof window === 'undefined') return INITIAL_SNAPSHOTS;
   try {
-    const raw = localStorage.getItem(GALLERY_STORAGE_KEY);
+    const raw = localStorage.getItem(scopedGalleryStorageKey());
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) return parsed;
@@ -49,7 +56,7 @@ function loadStoredSnapshots(): FocusSnapshot[] {
 function saveSnapshots(snaps: FocusSnapshot[]) {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(GALLERY_STORAGE_KEY, JSON.stringify(snaps));
+    localStorage.setItem(scopedGalleryStorageKey(), JSON.stringify(snaps));
   } catch {
     // ignore
   }
@@ -59,6 +66,7 @@ interface GalleryStoreState {
   snapshots: FocusSnapshot[];
   streakDays: number;
   addSnapshot: (snapshot: FocusSnapshot) => void;
+  setSnapshots: (snapshots: FocusSnapshot[]) => void;
   deleteSnapshot: (id: string) => void;
   clearAll: () => void;
   getTodaySnapshots: () => FocusSnapshot[];
@@ -67,6 +75,11 @@ interface GalleryStoreState {
 export const useGalleryStore = create<GalleryStoreState>((set, get) => ({
   snapshots: loadStoredSnapshots(),
   streakDays: 4, // 4-day active streak
+
+  setSnapshots: (snapshots) => {
+    saveSnapshots(snapshots);
+    set({ snapshots });
+  },
 
   addSnapshot: (snapshot: FocusSnapshot) => {
     const current = get().snapshots;
@@ -96,3 +109,26 @@ export const useGalleryStore = create<GalleryStoreState>((set, get) => ({
     return snaps.filter((s) => new Date(s.timestamp).toDateString() === todayStr);
   },
 }));
+
+/** Uses per-account browser caches and only claims the old shared cache once. */
+export function setGalleryDataUser(userId: string | null) {
+  if (activeGalleryUserId === userId) return;
+  activeGalleryUserId = userId;
+  if (!userId || typeof window === 'undefined') return;
+
+  try {
+    const ownerKey = 'snapfocus_gallery_owner_v1';
+    const scoped = localStorage.getItem(scopedGalleryStorageKey());
+    let serialized = scoped;
+    if (!serialized && !localStorage.getItem(ownerKey)) {
+      serialized = localStorage.getItem(GALLERY_STORAGE_KEY);
+      localStorage.setItem(ownerKey, userId);
+    }
+    const parsed = serialized ? JSON.parse(serialized) : null;
+    const snapshots = Array.isArray(parsed) ? parsed : INITIAL_SNAPSHOTS;
+    saveSnapshots(snapshots);
+    useGalleryStore.setState({ snapshots });
+  } catch {
+    // Keep the in-memory gallery if browser storage is unavailable.
+  }
+}
