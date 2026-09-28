@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
@@ -71,6 +72,11 @@ class FlutterNotificationPlatform implements NotificationPlatform {
   bool _initialized = false;
 
   Future<void> initialize({void Function(String? payload)? onTap}) async {
+    if (kIsWeb) {
+      _initialized = true;
+      return;
+    }
+
     tz_data.initializeTimeZones();
     final localTimezone = await FlutterTimezone.getLocalTimezone();
     tz.setLocalLocation(tz.getLocation(localTimezone.identifier));
@@ -94,6 +100,8 @@ class FlutterNotificationPlatform implements NotificationPlatform {
   }
 
   Future<bool> requestPermissions() async {
+    if (kIsWeb) return true;
+
     final ios = _plugin
         .resolvePlatformSpecificImplementation<
           IOSFlutterLocalNotificationsPlugin
@@ -113,6 +121,8 @@ class FlutterNotificationPlatform implements NotificationPlatform {
 
   @override
   Future<void> schedule(NotificationRequest request) async {
+    if (kIsWeb) return;
+
     _assertInitialized();
     final details = NotificationDetails(
       android: AndroidNotificationDetails(
@@ -142,6 +152,8 @@ class FlutterNotificationPlatform implements NotificationPlatform {
 
   @override
   Future<void> cancel(int id) async {
+    if (kIsWeb) return;
+
     _assertInitialized();
     await _plugin.cancel(id: id);
   }

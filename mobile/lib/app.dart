@@ -4,10 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'domain/routine_controller.dart';
 import 'domain/routine_ports.dart';
 import 'domain/task_controller.dart';
+import 'domain/goal_controller.dart';
 import 'features/calendar/calendar_screen.dart';
 import 'features/gallery/gallery_screen.dart';
 import 'features/routine/routine_screen.dart';
 import 'features/tasks/tasks_screen.dart';
+import 'features/goals/goals_screen.dart';
 
 final routineControllerProvider = Provider<RoutineController>((ref) {
   throw UnimplementedError('The app must provide a RoutineController.');
@@ -21,17 +23,23 @@ final taskControllerProvider = Provider<TaskController>((ref) {
   throw UnimplementedError('The app must provide a TaskController.');
 });
 
+final goalControllerProvider = Provider<GoalController>((ref) {
+  throw UnimplementedError('The app must provide a GoalController.');
+});
+
 class SnapFocusApp extends StatelessWidget {
   const SnapFocusApp({
     super.key,
     required this.controller,
     required this.snapshots,
     required this.tasks,
+    required this.goals,
   });
 
   final RoutineController controller;
   final SnapshotRepository snapshots;
   final TaskController tasks;
+  final GoalController goals;
 
   @override
   Widget build(BuildContext context) {
@@ -40,6 +48,7 @@ class SnapFocusApp extends StatelessWidget {
         routineControllerProvider.overrideWithValue(controller),
         snapshotRepositoryProvider.overrideWithValue(snapshots),
         taskControllerProvider.overrideWithValue(tasks),
+        goalControllerProvider.overrideWithValue(goals),
       ],
       child: const _AppView(),
     );
@@ -80,7 +89,20 @@ class _MobileShell extends ConsumerStatefulWidget {
 }
 
 class _MobileShellState extends ConsumerState<_MobileShell> {
-  int _tab = 0;
+  int _tab = 1;
+  late final ValueNotifier<DateTime> _selectedDate;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedDate = ValueNotifier(DateTime.now());
+  }
+
+  @override
+  void dispose() {
+    _selectedDate.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -92,15 +114,14 @@ class _MobileShellState extends ConsumerState<_MobileShell> {
       body: IndexedStack(
         index: _tab,
         children: [
+          GoalsScreen(
+            controller: ref.watch(goalControllerProvider),
+            tasks: tasks,
+          ),
           TasksScreen(
             controller: tasks,
-            onStartTask: (task) async {
-              await tasks.startTask(task);
-              if (mounted) setState(() => _tab = 2);
-            },
-          ),
-          CalendarScreen(
-            controller: tasks,
+            goals: ref.watch(goalControllerProvider),
+            selectedDate: _selectedDate,
             onStartTask: (task) async {
               await tasks.startTask(task);
               if (mounted) setState(() => _tab = 2);
@@ -110,6 +131,18 @@ class _MobileShellState extends ConsumerState<_MobileShell> {
             controller: routine,
             snapshots: snapshots,
             taskTitle: tasks.selectedTask?.title,
+            taskDurationMinutes: tasks.selectedTask?.durationMinutes,
+            onStop: tasks.saveActiveTaskProgress,
+            onEndWithoutPhoto: tasks.completeActiveTaskWithoutPhoto,
+          ),
+          CalendarScreen(
+            controller: tasks,
+            goals: ref.watch(goalControllerProvider),
+            selectedDate: _selectedDate,
+            onStartTask: (task) async {
+              await tasks.startTask(task);
+              if (mounted) setState(() => _tab = 2);
+            },
           ),
           GalleryScreen(repository: snapshots),
         ],
@@ -118,17 +151,18 @@ class _MobileShellState extends ConsumerState<_MobileShell> {
         selectedIndex: _tab,
         onDestinationSelected: (index) => setState(() => _tab = index),
         destinations: const [
+          NavigationDestination(icon: Icon(Icons.flag_rounded), label: 'Goals'),
           NavigationDestination(
             icon: Icon(Icons.checklist_rounded),
             label: 'Tasks',
           ),
           NavigationDestination(
-            icon: Icon(Icons.calendar_month_rounded),
-            label: 'Calendar',
-          ),
-          NavigationDestination(
             icon: Icon(Icons.timer_rounded),
             label: 'Timer',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.calendar_month_rounded),
+            label: 'Calendar',
           ),
           NavigationDestination(
             icon: Icon(Icons.auto_awesome_mosaic_rounded),

@@ -41,6 +41,9 @@ class DriftTaskRepository implements TaskRepository {
                 completed: Value(task.completed),
                 completedDates: jsonEncode(task.completedDates),
                 position: index,
+                goalId: Value(task.goalId),
+                repeatDays: Value(jsonEncode(task.repeatDays)),
+                repeatMonthDay: Value(task.repeatMonthDay),
               ),
             );
       }
@@ -64,5 +67,11 @@ TaskBlock _toTask(Task row) {
     completedDates: completedDates is List
         ? completedDates.whereType<String>().toList(growable: false)
         : const [],
+    goalId: row.goalId,
+    repeatDays: (jsonDecode(row.repeatDays) as List<dynamic>)
+        .whereType<num>()
+        .map((day) => day.toInt())
+        .toList(growable: false),
+    repeatMonthDay: row.repeatMonthDay,
   );
 }

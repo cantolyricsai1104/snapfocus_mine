@@ -6,7 +6,9 @@ import 'package:flutter/material.dart';
 import '../../domain/routine.dart';
 import '../../domain/routine_controller.dart';
 import '../../domain/routine_ports.dart';
+import '../../domain/goal.dart';
 import '../gallery/gallery_screen.dart';
+import '../goals/goals_screen.dart';
 import 'camera_capture_screen.dart';
 
 class RoutineScreen extends StatefulWidget {
@@ -15,11 +17,17 @@ class RoutineScreen extends StatefulWidget {
     required this.controller,
     this.snapshots,
     this.taskTitle,
+    this.taskDurationMinutes,
+    this.onStop,
+    this.onEndWithoutPhoto,
   });
 
   final RoutineController controller;
   final SnapshotRepository? snapshots;
   final String? taskTitle;
+  final int? taskDurationMinutes;
+  final Future<void> Function()? onStop;
+  final Future<Goal?> Function()? onEndWithoutPhoto;
 
   @override
   State<RoutineScreen> createState() => _RoutineScreenState();
@@ -88,7 +96,7 @@ class _RoutineScreenState extends State<RoutineScreen>
 
   Future<void> _start() => _run(
     () => widget.controller.start(
-      focusDuration: const Duration(minutes: 25),
+      focusDuration: Duration(minutes: widget.taskDurationMinutes ?? 25),
       breakDuration: const Duration(minutes: 5),
     ),
   );
@@ -101,8 +109,13 @@ class _RoutineScreenState extends State<RoutineScreen>
     if (_busy) return;
     setState(() => _busy = true);
     try {
+      await widget.onStop?.call();
+      final achievedGoal = await widget.onEndWithoutPhoto?.call();
       await widget.controller.stop();
       if (mounted) setState(() => _state = null);
+      if (achievedGoal != null && mounted) {
+        await showGoalAchieved(context, achievedGoal);
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -200,7 +213,7 @@ class _RoutineScreenState extends State<RoutineScreen>
                     isIdle
                         ? 'Your focus buddy is ready'
                         : isLocked
-                        ? 'A quick photo unlocks the next round.'
+                        ? 'A quick photo unlocks the next round, or end the routine here.'
                         : isBreak
                         ? 'Look away, breathe, and let the ball rest.'
                         : 'Growing with your focus',
@@ -211,7 +224,12 @@ class _RoutineScreenState extends State<RoutineScreen>
                     ),
                   ),
                   const SizedBox(height: 22),
-                  _TimerCard(state: state),
+                  _TimerCard(
+                    state: state,
+                    idleFocusDuration: Duration(
+                      minutes: widget.taskDurationMinutes ?? 25,
+                    ),
+                  ),
                   const SizedBox(height: 22),
                   if (isIdle)
                     _PrimaryButton(
@@ -239,12 +257,12 @@ class _RoutineScreenState extends State<RoutineScreen>
                           : Icons.pause_rounded,
                       onPressed: isBreak || _busy ? null : _pause,
                     ),
-                  if (!isIdle && !isLocked) ...[
+                  if (!isIdle) ...[
                     const SizedBox(height: 12),
                     TextButton(
                       onPressed: _busy ? null : _stop,
                       child: Text(
-                        'End routine',
+                        isLocked ? 'End without photo' : 'End routine',
                         style: TextStyle(color: colors.primary),
                       ),
                     ),
@@ -268,14 +286,15 @@ class _RoutineScreenState extends State<RoutineScreen>
 }
 
 class _TimerCard extends StatelessWidget {
-  const _TimerCard({required this.state});
+  const _TimerCard({required this.state, required this.idleFocusDuration});
 
   final RoutineState? state;
+  final Duration idleFocusDuration;
 
   @override
   Widget build(BuildContext context) {
     final duration = state == null
-        ? const Duration(minutes: 25)
+        ? idleFocusDuration
         : state!.status == RoutineStatus.paused
         ? state!.pausedRemaining ?? Duration.zero
         : state!.progress == 0

@@ -1,0 +1,160 @@
+import 'task.dart';
+
+enum GoalMetricType { numeric, time }
+
+enum GoalDurationUnit {
+  day('day'),
+  week('week'),
+  month('month');
+
+  const GoalDurationUnit(this.label);
+  final String label;
+}
+
+class Pillar {
+  const Pillar({
+    required this.id,
+    required this.name,
+    required this.color,
+    required this.emoji,
+  });
+
+  final String id;
+  final String name;
+  final String color;
+  final String emoji;
+
+  Pillar copyWith({String? name, String? color, String? emoji}) => Pillar(
+    id: id,
+    name: name ?? this.name,
+    color: color ?? this.color,
+    emoji: emoji ?? this.emoji,
+  );
+}
+
+class Goal {
+  const Goal({
+    required this.id,
+    required this.pillarId,
+    required this.name,
+    required this.metricType,
+    required this.targetValue,
+    required this.currentValue,
+    required this.unit,
+    this.durationMonths = 3,
+    this.durationWeeks = 0,
+    this.durationValue = 3,
+    this.durationUnit = GoalDurationUnit.month,
+    this.startedOn,
+    this.taskTitle,
+    this.taskWeekdays = const [],
+    this.taskDurationMinutes = 25,
+    this.taskTime,
+    this.taskRepeat = TaskRepeat.weekly,
+    this.taskMonthDay = 1,
+  });
+
+  final String id;
+  final String pillarId;
+  final String name;
+  final GoalMetricType metricType;
+  final double targetValue;
+  final double currentValue;
+  final String unit;
+  final int durationMonths;
+  final int durationWeeks;
+  final int durationValue;
+  final GoalDurationUnit durationUnit;
+  final String? startedOn;
+  final String? taskTitle;
+  final List<int> taskWeekdays;
+  final int taskDurationMinutes;
+  final String? taskTime;
+  final TaskRepeat taskRepeat;
+  final int taskMonthDay;
+
+  DateTime? get endDate {
+    if (startedOn == null || durationValue <= 0) {
+      return null;
+    }
+    final start = DateTime.parse(startedOn!);
+    return switch (durationUnit) {
+      GoalDurationUnit.day => start.add(Duration(days: durationValue)),
+      GoalDurationUnit.week => start.add(Duration(days: durationValue * 7)),
+      GoalDurationUnit.month => _addMonths(start, durationValue),
+    };
+  }
+
+  double get progress {
+    final end = endDate;
+    if (end == null || startedOn == null) return 0;
+    final start = DateTime.parse(startedOn!);
+    final total = end.difference(start).inSeconds;
+    if (total <= 0) return 0;
+    final elapsed = DateTime.now().difference(start).inSeconds;
+    return (elapsed / total).clamp(0.0, 1.0).toDouble();
+  }
+
+  bool get achieved => endDate != null && !DateTime.now().isBefore(endDate!);
+  bool get expired {
+    final end = endDate;
+    if (end == null) return false;
+    final today = DateTime.now();
+    return DateTime(today.year, today.month, today.day).isAfter(
+      DateTime(end.year, end.month, end.day),
+    );
+  }
+
+  Goal copyWith({
+    String? pillarId,
+    String? name,
+    GoalMetricType? metricType,
+    double? targetValue,
+    double? currentValue,
+    String? unit,
+    int? durationMonths,
+    int? durationWeeks,
+    int? durationValue,
+    GoalDurationUnit? durationUnit,
+    Object? startedOn = _unset,
+    Object? taskTitle = _unset,
+    List<int>? taskWeekdays,
+    int? taskDurationMinutes,
+    Object? taskTime = _unset,
+    TaskRepeat? taskRepeat,
+    int? taskMonthDay,
+  }) => Goal(
+    id: id,
+    pillarId: pillarId ?? this.pillarId,
+    name: name ?? this.name,
+    metricType: metricType ?? this.metricType,
+    targetValue: targetValue ?? this.targetValue,
+    currentValue: currentValue ?? this.currentValue,
+    unit: unit ?? this.unit,
+    durationMonths: durationMonths ?? this.durationMonths,
+    durationWeeks: durationWeeks ?? this.durationWeeks,
+    durationValue: durationValue ?? this.durationValue,
+    durationUnit: durationUnit ?? this.durationUnit,
+    startedOn: identical(startedOn, _unset)
+        ? this.startedOn
+        : startedOn as String?,
+    taskTitle: identical(taskTitle, _unset)
+        ? this.taskTitle
+        : taskTitle as String?,
+    taskWeekdays: taskWeekdays ?? this.taskWeekdays,
+    taskDurationMinutes: taskDurationMinutes ?? this.taskDurationMinutes,
+    taskTime: identical(taskTime, _unset) ? this.taskTime : taskTime as String?,
+    taskRepeat: taskRepeat ?? this.taskRepeat,
+    taskMonthDay: taskMonthDay ?? this.taskMonthDay,
+  );
+}
+
+DateTime _addMonths(DateTime date, int months) {
+  final monthIndex = date.month - 1 + months;
+  final year = date.year + monthIndex ~/ 12;
+  final month = monthIndex % 12 + 1;
+  final lastDay = DateTime(year, month + 1, 0).day;
+  return DateTime(year, month, date.day.clamp(1, lastDay));
+}
+
+const Object _unset = Object();

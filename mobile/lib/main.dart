@@ -5,9 +5,11 @@ import 'data/app_database.dart';
 import 'data/routine_repository.dart';
 import 'data/snapshot_repository.dart';
 import 'data/task_repository.dart';
+import 'data/goal_repository.dart';
 import 'domain/routine_controller.dart';
 import 'domain/routine_ports.dart';
 import 'domain/task_controller.dart';
+import 'domain/goal_controller.dart';
 import 'services/local_notification_scheduler.dart';
 
 class SystemRoutineClock implements RoutineClock {
@@ -32,9 +34,13 @@ Future<void> main() async {
     snapshots: snapshotRepository,
   );
   final taskRepository = DriftTaskRepository(database);
+  final goalController = GoalController(
+    repository: DriftGoalRepository(database),
+  );
   final taskController = TaskController(
     repository: taskRepository,
     routine: controller,
+    goals: goalController,
   );
 
   runApp(
@@ -42,6 +48,7 @@ Future<void> main() async {
       controller: controller,
       snapshots: snapshotRepository,
       tasks: taskController,
+      goals: goalController,
     ),
   );
 }

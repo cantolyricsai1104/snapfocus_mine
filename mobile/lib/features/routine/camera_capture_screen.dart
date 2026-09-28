@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -39,6 +40,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
   }
 
   Future<void> _initialize() async {
+    if (mounted) setState(() => _error = null);
     try {
       final cameras = await availableCameras();
       if (cameras.isEmpty) throw StateError('No camera is available.');
@@ -56,6 +58,11 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
     } catch (error) {
       if (mounted) setState(() => _error = '$error');
     }
+  }
+
+  Future<void> _endRoutine() async {
+    await widget.controller.stop();
+    if (mounted) Navigator.of(context).pop();
   }
 
   @override
@@ -108,7 +115,11 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
         title: const Text('A tiny reset'),
       ),
       body: _error != null
-          ? _CameraMessage(error: _error!)
+          ? _CameraMessage(
+              error: _error!,
+              onRetry: _initialize,
+              onEnd: _endRoutine,
+            )
           : camera == null || !camera.value.isInitialized
           ? const Center(child: CircularProgressIndicator(color: Colors.white))
           : Stack(
@@ -187,19 +198,84 @@ class _CameraHint extends StatelessWidget {
 }
 
 class _CameraMessage extends StatelessWidget {
-  const _CameraMessage({required this.error});
+  const _CameraMessage({
+    required this.error,
+    required this.onRetry,
+    required this.onEnd,
+  });
 
   final String error;
+  final VoidCallback onRetry;
+  final VoidCallback onEnd;
 
   @override
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(28),
-        child: Text(
-          'Camera unavailable. You can end this routine and try again later.\n\n$error',
-          textAlign: TextAlign.center,
-          style: const TextStyle(color: Colors.white),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.no_photography_outlined,
+              color: Colors.white70,
+              size: 46,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              kIsWeb
+                  ? 'Camera access is unavailable in this web preview.'
+                  : 'Camera access is unavailable.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              kIsWeb
+                  ? 'Try the mobile app to capture proof, or try the camera again.'
+                  : 'Allow camera access, then try again. You can also end this routine for now.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white70, height: 1.4),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              error,
+              textAlign: TextAlign.center,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.white38, fontSize: 11),
+            ),
+            const SizedBox(height: 22),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: onRetry,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Try again'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: const BorderSide(color: Colors.white54),
+                  ),
+                ),
+                FilledButton.icon(
+                  onPressed: onEnd,
+                  icon: const Icon(Icons.stop_rounded),
+                  label: const Text('End routine'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFFE97965),
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

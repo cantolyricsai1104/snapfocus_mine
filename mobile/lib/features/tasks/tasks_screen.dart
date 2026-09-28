@@ -1,16 +1,26 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import '../../domain/routine.dart';
 import '../../domain/task.dart';
 import '../../domain/task_controller.dart';
+import '../../domain/goal.dart';
+import '../../domain/goal_controller.dart';
+import '../goals/goals_screen.dart';
 
 class TasksScreen extends StatefulWidget {
   const TasksScreen({
     super.key,
     required this.controller,
+    required this.goals,
+    required this.selectedDate,
     required this.onStartTask,
   });
 
   final TaskController controller;
+  final GoalController goals;
+  final ValueNotifier<DateTime> selectedDate;
   final ValueChanged<TaskBlock> onStartTask;
 
   @override
@@ -18,12 +28,37 @@ class TasksScreen extends StatefulWidget {
 }
 
 class _TasksScreenState extends State<TasksScreen> {
-  DateTime _selectedDate = DateTime.now();
+  final Set<String> _dismissedBreaks = {};
+  Timer? _activeTaskRefreshTimer;
 
   @override
   void initState() {
     super.initState();
     widget.controller.restore();
+    widget.goals.restore();
+    widget.selectedDate.addListener(_onSelectedDateChanged);
+    _activeTaskRefreshTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      _refreshActiveTask();
+    });
+  }
+
+  @override
+  void dispose() {
+    widget.selectedDate.removeListener(_onSelectedDateChanged);
+    _activeTaskRefreshTimer?.cancel();
+    super.dispose();
+  }
+
+  void _onSelectedDateChanged() {
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _refreshActiveTask() async {
+    final achieved = await widget.controller.completeActiveTaskIfNeeded(
+      _dateString(widget.selectedDate.value),
+    );
+    if (achieved != null && mounted) await showGoalAchieved(context, achieved);
+    if (mounted) setState(() {});
   }
 
   @override
@@ -38,7 +73,7 @@ class _TasksScreenState extends State<TasksScreen> {
           );
         }
 
-        final date = _dateString(_selectedDate);
+        final date = _dateString(widget.selectedDate.value);
         final tasks = widget.controller.tasks
             .where((task) => task.isScheduledOn(date))
             .toList(growable: false);
@@ -51,6 +86,7 @@ class _TasksScreenState extends State<TasksScreen> {
         final completed = tasks
             .where((task) => task.isCompletedOn(date))
             .length;
+        final suggestion = suggestBreak(tasks, date);
 
         return Scaffold(
           backgroundColor: const Color(0xFFFFF9F2),
@@ -77,16 +113,17 @@ class _TasksScreenState extends State<TasksScreen> {
               ),
               const SizedBox(height: 16),
               _DatePickerRow(
-                date: _selectedDate,
+                date: widget.selectedDate.value,
                 onPrevious: () => setState(() {
-                  _selectedDate = _selectedDate.subtract(
+                  widget.selectedDate.value = widget.selectedDate.value
+                      .subtract(const Duration(days: 1));
+                }),
+                onNext: () => setState(() {
+                  widget.selectedDate.value = widget.selectedDate.value.add(
                     const Duration(days: 1),
                   );
                 }),
-                onNext: () => setState(() {
-                  _selectedDate = _selectedDate.add(const Duration(days: 1));
-                }),
-                onToday: () => setState(() => _selectedDate = DateTime.now()),
+                onToday: () => widget.selectedDate.value = DateTime.now(),
               ),
               const SizedBox(height: 14),
               Row(
@@ -117,6 +154,16 @@ class _TasksScreenState extends State<TasksScreen> {
                 focusMinutes: focusMinutes,
               ),
               const SizedBox(height: 18),
+              if (suggestion != null &&
+                  !_dismissedBreaks.contains(suggestion.key)) ...[
+                _BreakSuggestionCard(
+                  suggestion: suggestion,
+                  onAdd: () => _addSuggestedBreak(suggestion, date),
+                  onDismiss: () =>
+                      setState(() => _dismissedBreaks.add(suggestion.key)),
+                ),
+                const SizedBox(height: 18),
+              ],
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -145,19 +192,27 @@ class _TasksScreenState extends State<TasksScreen> {
               if (tasks.isEmpty)
                 const _EmptyTasks()
               else
-                ...tasks.map(
-                  (task) => _TaskCard(
+                ...tasks.map((task) {
+                  final done = task.isCompletedOn(date);
+                  final isActive =
+                      widget.controller.hasActiveTimer &&
+                      widget.controller.activeTaskId == task.id &&
+                      !done;
+                  final state = widget.controller.routineState;
+                  return _TaskCard(
                     task: task,
                     date: date,
+                    active: isActive,
+                    progress: widget.controller.taskProgress(task),
+                    activityLabel: isActive ? _activityLabel(state) : null,
                     onStart: () => widget.onStartTask(task),
                     onEdit: () => _editTask(task),
                     onDelete: () => widget.controller.delete(task.id),
-                    onToggle: () =>
-                        widget.controller.toggleCompleted(task.id, date),
+                    onToggle: () => _toggleTask(task, date),
                     onMoveUp: () => _move(task, -1),
                     onMoveDown: () => _move(task, 1),
-                  ),
-                ),
+                  );
+                }),
             ],
           ),
         );
@@ -165,20 +220,50 @@ class _TasksScreenState extends State<TasksScreen> {
     );
   }
 
+  String _activityLabel(RoutineState? state) {
+    if (state?.status == RoutineStatus.paused) return 'Paused';
+    if (state?.phase == RoutinePhase.breakTime) return 'Break running';
+    return 'Running now';
+  }
+
   Future<void> _addTask(String date) async {
     final task = await showModalBottomSheet<TaskBlock>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => TaskEditorSheet(date: date),
+      builder: (_) => TaskEditorSheet(date: date, goals: widget.goals.goals),
     );
     if (task != null) await widget.controller.add(task);
+  }
+
+  Future<void> _addSuggestedBreak(
+    BreakSuggestion suggestion,
+    String date,
+  ) async {
+    final now = DateTime.now().microsecondsSinceEpoch;
+    await widget.controller.add(
+      TaskBlock(
+        id: 'break-$now',
+        title: 'Reset & recharge',
+        durationMinutes: suggestion.durationMinutes,
+        type: TaskType.breakTime,
+        color: '#8067B7',
+        scheduledTime: suggestion.startTime,
+        date: date,
+        repeat: TaskRepeat.none,
+      ),
+    );
+    if (mounted) setState(() => _dismissedBreaks.add(suggestion.key));
   }
 
   Future<void> _editTask(TaskBlock task) async {
     final updated = await showModalBottomSheet<TaskBlock>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => TaskEditorSheet(date: task.date, initial: task),
+      builder: (_) => TaskEditorSheet(
+        date: task.date,
+        initial: task,
+        goals: widget.goals.goals,
+      ),
     );
     if (updated != null) await widget.controller.update(updated);
   }
@@ -188,6 +273,14 @@ class _TasksScreenState extends State<TasksScreen> {
       (item) => item.id == task.id,
     );
     await widget.controller.reorder(index, index + direction);
+  }
+
+  Future<void> _toggleTask(TaskBlock task, String date) async {
+    final achieved = await widget.controller.toggleCompleted(
+      task.id,
+      date,
+    );
+    if (achieved != null && mounted) await showGoalAchieved(context, achieved);
   }
 }
 
@@ -361,6 +454,93 @@ class _ProgressCard extends StatelessWidget {
   }
 }
 
+class _BreakSuggestionCard extends StatelessWidget {
+  const _BreakSuggestionCard({
+    required this.suggestion,
+    required this.onAdd,
+    required this.onDismiss,
+  });
+
+  final BreakSuggestion suggestion;
+  final VoidCallback onAdd;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1ECFA),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFD8C9F0)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 2),
+            child: Icon(Icons.coffee_rounded, color: Color(0xFF8067B7)),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Add a reset break?',
+                  style: TextStyle(
+                    color: Color(0xFF29313D),
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  '${suggestion.durationMinutes} minutes before “${suggestion.next.title}”.',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF756C68),
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    FilledButton(
+                      onPressed: onAdd,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF8067B7),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        minimumSize: Size.zero,
+                      ),
+                      child: const Text('Add break'),
+                    ),
+                    TextButton(
+                      onPressed: onDismiss,
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 8,
+                        ),
+                        minimumSize: Size.zero,
+                      ),
+                      child: const Text('Not now'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _EmptyTasks extends StatelessWidget {
   const _EmptyTasks();
 
@@ -400,6 +580,9 @@ class _TaskCard extends StatelessWidget {
   const _TaskCard({
     required this.task,
     required this.date,
+    required this.active,
+    required this.progress,
+    required this.activityLabel,
     required this.onStart,
     required this.onEdit,
     required this.onDelete,
@@ -410,6 +593,9 @@ class _TaskCard extends StatelessWidget {
 
   final TaskBlock task;
   final String date;
+  final bool active;
+  final double progress;
+  final String? activityLabel;
   final VoidCallback onStart;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
@@ -426,98 +612,181 @@ class _TaskCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       elevation: 0,
-      color: Colors.white,
+      clipBehavior: Clip.antiAlias,
+      color: active ? const Color(0xFFFFF0EC) : Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
-        side: const BorderSide(color: Color(0xFFF1E3D7)),
+        side: BorderSide(
+          color: active ? const Color(0xFFE97965) : const Color(0xFFF1E3D7),
+          width: active ? 1.5 : 1,
+        ),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            Checkbox(
-              value: done,
-              onChanged: (_) => onToggle(),
-              activeColor: color,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(6),
-              ),
-            ),
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                task.type == TaskType.focus
-                    ? Icons.local_fire_department_rounded
-                    : Icons.coffee_rounded,
-                color: color,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    task.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: const Color(0xFF29313D),
-                      fontWeight: FontWeight.w800,
-                      decoration: done ? TextDecoration.lineThrough : null,
+      child: Stack(
+        children: [
+          if (!done && progress > 0)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: progress),
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOut,
+                  builder: (context, animatedProgress, child) => Align(
+                    alignment: Alignment.centerLeft,
+                    child: FractionallySizedBox(
+                      widthFactor: animatedProgress,
+                      heightFactor: 1,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              color.withValues(alpha: 0.12),
+                              color.withValues(alpha: active ? 0.24 : 0.16),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 3),
-                  Text(
-                    '${task.scheduledTime ?? 'Unscheduled'}  ·  ${task.durationMinutes}m${task.repeat != TaskRepeat.none ? '  ·  ${task.repeat.name}' : ''}',
-                    style: const TextStyle(
-                      color: Color(0xFF8D827B),
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
-            PopupMenuButton<String>(
-              onSelected: (value) {
-                switch (value) {
-                  case 'start':
-                    onStart();
-                  case 'edit':
-                    onEdit();
-                  case 'up':
-                    onMoveUp();
-                  case 'down':
-                    onMoveDown();
-                  case 'delete':
-                    onDelete();
-                }
-              },
-              itemBuilder: (_) => const [
-                PopupMenuItem(value: 'start', child: Text('Start timer')),
-                PopupMenuItem(value: 'edit', child: Text('Edit block')),
-                PopupMenuItem(value: 'up', child: Text('Move up')),
-                PopupMenuItem(value: 'down', child: Text('Move down')),
-                PopupMenuItem(value: 'delete', child: Text('Delete')),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Checkbox(
+                  value: done,
+                  onChanged: (_) => onToggle(),
+                  activeColor: color,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    task.type == TaskType.focus
+                        ? Icons.local_fire_department_rounded
+                        : Icons.coffee_rounded,
+                    color: color,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              task.title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: const Color(0xFF29313D),
+                                fontWeight: FontWeight.w800,
+                                decoration: done
+                                    ? TextDecoration.lineThrough
+                                    : null,
+                              ),
+                            ),
+                          ),
+                          if (active) ...[
+                            const SizedBox(width: 6),
+                            _RunningPill(label: activityLabel!),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        '${task.scheduledTime ?? 'Anytime'}  ·  ${task.durationMinutes}m${task.repeat != TaskRepeat.none ? '  ·  ${task.repeat.name}' : ''}',
+                        style: const TextStyle(
+                          color: Color(0xFF8D827B),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                PopupMenuButton<String>(
+                  onSelected: (value) {
+                    switch (value) {
+                      case 'start':
+                        onStart();
+                      case 'edit':
+                        onEdit();
+                      case 'up':
+                        onMoveUp();
+                      case 'down':
+                        onMoveDown();
+                      case 'delete':
+                        onDelete();
+                    }
+                  },
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'start', child: Text('Start timer')),
+                    PopupMenuItem(value: 'edit', child: Text('Edit block')),
+                    PopupMenuItem(value: 'up', child: Text('Move up')),
+                    PopupMenuItem(value: 'down', child: Text('Move down')),
+                    PopupMenuItem(value: 'delete', child: Text('Delete')),
+                  ],
+                ),
               ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
 
+class _RunningPill extends StatelessWidget {
+  const _RunningPill({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+    decoration: BoxDecoration(
+      color: const Color(0xFFE97965),
+      borderRadius: BorderRadius.circular(20),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 12),
+        const SizedBox(width: 2),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 class TaskEditorSheet extends StatefulWidget {
-  const TaskEditorSheet({super.key, required this.date, this.initial});
+  const TaskEditorSheet({
+    super.key,
+    required this.date,
+    required this.goals,
+    this.initial,
+  });
 
   final String date;
+  final List<Goal> goals;
   final TaskBlock? initial;
 
   @override
@@ -532,6 +801,8 @@ class _TaskEditorSheetState extends State<TaskEditorSheet> {
   late TaskRepeat _repeat;
   String? _time;
   String? _repeatUntil;
+  String? _goalId;
+  late Set<int> _repeatDays;
 
   @override
   void initState() {
@@ -546,6 +817,12 @@ class _TaskEditorSheetState extends State<TaskEditorSheet> {
     _repeat = task?.repeat ?? TaskRepeat.none;
     _time = task?.scheduledTime ?? '10:00';
     _repeatUntil = task?.repeatUntil;
+    _goalId = widget.goals.any((goal) => goal.id == task?.goalId)
+        ? task?.goalId
+        : null;
+    _repeatDays = task?.repeatDays.isNotEmpty == true
+        ? {...task!.repeatDays}
+        : {DateTime.parse('${task?.date ?? widget.date}T00:00:00').weekday};
   }
 
   @override
@@ -579,7 +856,6 @@ class _TaskEditorSheetState extends State<TaskEditorSheet> {
               autofocus: widget.initial == null,
               decoration: InputDecoration(
                 labelText: 'Task title',
-                hintText: 'e.g. Learn Python Backend',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
@@ -600,8 +876,10 @@ class _TaskEditorSheetState extends State<TaskEditorSheet> {
                 ),
               ],
               selected: {_type},
-              onSelectionChanged: (value) =>
-                  setState(() => _type = value.first),
+              onSelectionChanged: (value) => setState(() {
+                _type = value.first;
+                if (_type == TaskType.breakTime) _goalId = null;
+              }),
             ),
             const SizedBox(height: 12),
             const Text(
@@ -687,6 +965,55 @@ class _TaskEditorSheetState extends State<TaskEditorSheet> {
                 ),
               ],
             ),
+            if (_repeat == TaskRepeat.weekly) ...[
+              const SizedBox(height: 12),
+              const Text(
+                'Repeat on',
+                style: TextStyle(
+                  color: Color(0xFF756C68),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                children: List.generate(7, (index) {
+                  final weekday = index + 1;
+                  const shortDays = [
+                    'Mon',
+                    'Tue',
+                    'Wed',
+                    'Thu',
+                    'Fri',
+                    'Sat',
+                    'Sun',
+                  ];
+                  const fullDays = [
+                    'Monday',
+                    'Tuesday',
+                    'Wednesday',
+                    'Thursday',
+                    'Friday',
+                    'Saturday',
+                    'Sunday',
+                  ];
+                  return Semantics(
+                    label: fullDays[index],
+                    child: FilterChip(
+                      label: Text(shortDays[index]),
+                      selected: _repeatDays.contains(weekday),
+                      onSelected: (selected) => setState(() {
+                        if (selected) {
+                          _repeatDays.add(weekday);
+                        } else if (_repeatDays.length > 1) {
+                          _repeatDays.remove(weekday);
+                        }
+                      }),
+                    ),
+                  );
+                }),
+              ),
+            ],
             if (_repeat != TaskRepeat.none) ...[
               const SizedBox(height: 12),
               Row(
@@ -712,6 +1039,39 @@ class _TaskEditorSheetState extends State<TaskEditorSheet> {
                       icon: const Icon(Icons.clear_rounded),
                     ),
                 ],
+              ),
+            ],
+            if (_type == TaskType.focus && widget.goals.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              DropdownButtonFormField<String?>(
+                initialValue: _goalId,
+                decoration: InputDecoration(
+                  labelText: 'Linked goal (optional)',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                items: [
+                  const DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text('No linked goal'),
+                  ),
+                  ...widget.goals.map(
+                    (goal) => DropdownMenuItem<String?>(
+                      value: goal.id,
+                      child: Text(
+                        '${goal.name} · ${goal.durationValue} ${goal.durationUnit.label}',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                ],
+                onChanged: (value) => setState(() => _goalId = value),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Tracked timer minutes add to the linked goal’s focused time.',
+                style: TextStyle(color: Color(0xFF8D827B), fontSize: 12),
               ),
             ],
             const SizedBox(height: 18),
@@ -781,6 +1141,10 @@ class _TaskEditorSheetState extends State<TaskEditorSheet> {
         repeatUntil: _repeatUntil,
         completed: widget.initial?.completed ?? false,
         completedDates: widget.initial?.completedDates ?? const [],
+        goalId: _goalId,
+        repeatDays: _repeat == TaskRepeat.weekly
+            ? (_repeatDays.toList()..sort())
+            : const [],
       ),
     );
   }
