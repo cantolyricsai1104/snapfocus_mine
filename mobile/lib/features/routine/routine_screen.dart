@@ -111,10 +111,55 @@ class _RoutineScreenState extends State<RoutineScreen>
 
   Future<void> _resume() => _run(() => widget.controller.resume());
 
+  Future<void> _extend(Duration additional) =>
+      _run(() => widget.controller.extendFocus(additional));
+
+  Future<void> _showMoreTime() async {
+    final additional = await showModalBottomSheet<Duration>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
+          child: Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              for (final minutes in [5, 10, 15, 20, 30])
+                OutlinedButton(
+                  onPressed: () =>
+                      Navigator.pop(context, Duration(minutes: minutes)),
+                  child: Text('+$minutes min'),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (additional != null) await _extend(additional);
+  }
+
   Future<void> _stop() async {
     if (_busy) return;
     setState(() => _busy = true);
     try {
+      final state = _state;
+      final snapshots = widget.snapshots;
+      if (state != null && snapshots != null) {
+        await Navigator.of(context).push<bool>(
+          MaterialPageRoute(
+            builder: (_) => CameraCaptureScreen(
+              snapshots: snapshots,
+              controller: widget.controller,
+              routine: state,
+              taskTitle: widget.taskTitle,
+              goalId: widget.goalId,
+              saveOnly: true,
+            ),
+          ),
+        );
+      }
       await widget.onStop?.call();
       final achievedGoal = await widget.onEndWithoutPhoto?.call();
       await widget.controller.stop();
@@ -266,6 +311,14 @@ class _RoutineScreenState extends State<RoutineScreen>
                           : Icons.pause_rounded,
                       onPressed: isBreak || _busy ? null : _pause,
                     ),
+                  if (!isIdle && !isLocked && !isBreak) ...[
+                    const SizedBox(height: 10),
+                    OutlinedButton.icon(
+                      onPressed: _busy ? null : _showMoreTime,
+                      icon: const Icon(Icons.more_time_rounded),
+                      label: const Text('Add more time'),
+                    ),
+                  ],
                   if (!isIdle) ...[
                     const SizedBox(height: 12),
                     TextButton(

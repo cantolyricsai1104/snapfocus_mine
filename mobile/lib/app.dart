@@ -113,7 +113,6 @@ class _MobileShellState extends ConsumerState<_MobileShell> {
     super.initState();
     _selectedDate = ValueNotifier(DateTime.now());
     if (widget.authClient?.auth.currentUser != null) {
-      ref.read(goalControllerProvider).reloadForAccount();
       _subscribeToCloudChanges();
     }
   }
@@ -161,11 +160,10 @@ class _MobileShellState extends ConsumerState<_MobileShell> {
         table: 'proof_notes',
         callback: (_) => _reloadCloudData(),
       )
-      ..subscribe((status, _) {
-        if (status == RealtimeSubscribeStatus.subscribed) {
-          _reloadCloudData();
-        }
-      });
+      // The screens perform the initial restore. Realtime only needs to
+      // refresh after a later cloud change; refreshing on subscribe races
+      // with that initial restore and can contend on the local SQLite queue.
+      ..subscribe();
   }
 
   Future<void> _reloadCloudData() async {

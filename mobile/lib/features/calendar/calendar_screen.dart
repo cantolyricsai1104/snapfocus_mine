@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -631,26 +632,26 @@ class _TimelineTaskState extends State<_TimelineTask> {
 
   TaskBlock get _task => _preview ?? widget.task;
 
-  void _beginDrag(DragStartDetails details) {
+  void _beginDragAt(double globalY) {
     // Keep the pointer origin in screen coordinates. The resize handle moves
     // as the block grows, so localPosition would shift underneath the finger.
-    _dragStartGlobalY = details.globalPosition.dy;
+    _dragStartGlobalY = globalY;
     _baseMinutes = _minutes(widget.task.scheduledTime ?? '09:00');
     _baseDuration = widget.task.durationMinutes;
   }
 
-  void _drag(DragUpdateDetails details) {
+  void _dragTo(double globalY) {
     if (_dragStartGlobalY == null || _baseMinutes == null) return;
-    final delta = details.globalPosition.dy - _dragStartGlobalY!;
+    final delta = globalY - _dragStartGlobalY!;
     final minutes = (_baseMinutes! + _snap(delta / _hourHeight * 60))
         .clamp(0, 24 * 60 - 15)
         .toInt();
     setState(() => _preview = _task.copyWith(scheduledTime: _time(minutes)));
   }
 
-  void _resize(DragUpdateDetails details) {
+  void _resizeTo(double globalY) {
     if (_dragStartGlobalY == null || _baseDuration == null) return;
-    final delta = details.globalPosition.dy - _dragStartGlobalY!;
+    final delta = globalY - _dragStartGlobalY!;
     final duration = (_baseDuration! + _snap(delta / _hourHeight * 60))
         .clamp(15, 12 * 60)
         .toInt();
@@ -665,6 +666,34 @@ class _TimelineTaskState extends State<_TimelineTask> {
       _baseMinutes = null;
       _baseDuration = null;
     });
+  }
+
+  Widget _dragRegion({required Widget child, required bool resize}) {
+    return RawGestureDetector(
+      behavior: HitTestBehavior.opaque,
+      gestures: {
+        LongPressGestureRecognizer:
+            GestureRecognizerFactoryWithHandlers<LongPressGestureRecognizer>(
+              () => LongPressGestureRecognizer(
+                duration: const Duration(milliseconds: 220),
+              ),
+              (recognizer) {
+                recognizer.onLongPressStart = (details) =>
+                    _beginDragAt(details.globalPosition.dy);
+                recognizer.onLongPressMoveUpdate = (details) {
+                  if (resize) {
+                    _resizeTo(details.globalPosition.dy);
+                  } else {
+                    _dragTo(details.globalPosition.dy);
+                  }
+                };
+                recognizer.onLongPressEnd = (_) => _commit();
+                recognizer.onLongPressCancel = _commit;
+              },
+            ),
+      },
+      child: child,
+    );
   }
 
   @override
@@ -692,10 +721,8 @@ class _TimelineTaskState extends State<_TimelineTask> {
       left: widget.left,
       width: widget.width,
       height: height,
-      child: GestureDetector(
-        onPanStart: _beginDrag,
-        onPanUpdate: _drag,
-        onPanEnd: (_) => _commit(),
+      child: _dragRegion(
+        resize: false,
         child: Stack(
           children: [
             Positioned.fill(
@@ -762,13 +789,9 @@ class _TimelineTaskState extends State<_TimelineTask> {
               left: 0,
               right: 0,
               bottom: 0,
-              height: height.clamp(20.0, 28.0).toDouble(),
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onPanStart: _beginDrag,
-                onPanUpdate: _resize,
-                onPanEnd: (_) => _commit(),
-                onPanCancel: _commit,
+               height: height.clamp(28.0, 36.0).toDouble(),
+               child: _dragRegion(
+                 resize: true,
                 child: Semantics(
                   label: 'Resize ${task.title}',
                   hint: 'Drag up or down to change the task duration',

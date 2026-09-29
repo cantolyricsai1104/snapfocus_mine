@@ -7,6 +7,7 @@ import '../../domain/goal.dart';
 import '../../domain/routine_ports.dart';
 import '../../domain/snapshot.dart';
 import '../../domain/task.dart';
+import '../routine/camera_capture_screen.dart';
 
 class GoalProofScreen extends StatefulWidget {
   const GoalProofScreen({
@@ -66,65 +67,18 @@ class _GoalProofScreenState extends State<GoalProofScreen> {
   }
 
   Future<void> _editNote(String date, CapturedPhoto? photo) async {
-    final controller = TextEditingController(text: _notes[date]?.note ?? '');
     final note = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(_longDate(DateTime.parse(date))),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (photo != null) ...[
-              ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: kIsWeb
-                    ? Image.network(
-                        photo.path,
-                        height: 180,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => const SizedBox.shrink(),
-                      )
-                    : Image.file(
-                        File(photo.path),
-                        height: 180,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => const SizedBox.shrink(),
-                      ),
-              ),
-              const SizedBox(height: 12),
-            ],
-            TextField(
-              controller: controller,
-              autofocus: true,
-              maxLines: 3,
-              maxLength: 240,
-              decoration: const InputDecoration(
-                labelText: 'A note for this day',
-                hintText: 'What did you focus on?',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            if (photo == null)
-              const Text(
-                'No proof photo saved for this day.',
-                style: TextStyle(color: Color(0xFF8D827B), fontSize: 12),
-              ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, controller.text.trim()),
-            child: const Text('Save note'),
-          ),
-        ],
+      builder: (_) => _ProofNoteDialog(
+        date: date,
+        photo: photo,
+        initialNote: _notes[date]?.note ?? '',
+        onAddPhoto: () async {
+          Navigator.of(context).pop();
+          await _addPhoto(DateTime.parse(date));
+        },
       ),
     );
-    controller.dispose();
     if (note == null) return;
     await widget.repository.saveNote(
       ProofDayNote(
@@ -134,6 +88,21 @@ class _GoalProofScreenState extends State<GoalProofScreen> {
       ),
     );
     await _load();
+  }
+
+  Future<void> _addPhoto(DateTime date) async {
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => CameraCaptureScreen(
+          snapshots: widget.repository,
+          taskTitle: widget.goal.taskTitle,
+          goalId: widget.goal.id,
+          captureDate: date,
+          saveOnly: true,
+        ),
+      ),
+    );
+    if (saved == true && mounted) await _load();
   }
 
   @override
@@ -303,6 +272,101 @@ class _GoalProofScreenState extends State<GoalProofScreen> {
   List<CapturedPhoto> _photosForDay(DateTime date) => _photos
       .where((photo) => _dateKey(photo.capturedAt) == _dateKey(date))
       .toList(growable: false);
+}
+
+class _ProofNoteDialog extends StatefulWidget {
+  const _ProofNoteDialog({
+    required this.date,
+    required this.photo,
+    required this.initialNote,
+    required this.onAddPhoto,
+  });
+
+  final String date;
+  final CapturedPhoto? photo;
+  final String initialNote;
+  final Future<void> Function() onAddPhoto;
+
+  @override
+  State<_ProofNoteDialog> createState() => _ProofNoteDialogState();
+}
+
+class _ProofNoteDialogState extends State<_ProofNoteDialog> {
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.initialNote,
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final photo = widget.photo;
+    return AlertDialog(
+      title: Text(_longDate(DateTime.parse(widget.date))),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (photo != null) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: kIsWeb
+                    ? Image.network(
+                        photo.path,
+                        height: 180,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                      )
+                    : Image.file(
+                        File(photo.path),
+                        height: 180,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                      ),
+              ),
+              const SizedBox(height: 12),
+            ],
+            TextField(
+              controller: _controller,
+              autofocus: true,
+              maxLines: 3,
+              maxLength: 240,
+              decoration: const InputDecoration(
+                labelText: 'A note for this day',
+                hintText: 'What did you focus on?',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (photo == null)
+              const Text(
+                'No proof photo saved for this day.',
+                style: TextStyle(color: Color(0xFF8D827B), fontSize: 12),
+              ),
+          ],
+        ),
+      ),
+      actions: [
+        OutlinedButton.icon(
+          onPressed: () => widget.onAddPhoto(),
+          icon: const Icon(Icons.camera_alt_outlined),
+          label: const Text('Add photo'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, _controller.text.trim()),
+          child: const Text('Save note'),
+        ),
+      ],
+    );
+  }
 }
 
 List<DateTime> _scheduledDates(Goal goal) {

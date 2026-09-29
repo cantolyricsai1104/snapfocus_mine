@@ -66,7 +66,7 @@ class SupabaseSyncBridge {
     }
     await database.customStatement(
       'INSERT INTO snapfocus_sync_state(key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
-      [Variable.withString('owner'), Variable.withString(id)],
+      ['owner', id],
     );
   }
 
@@ -386,9 +386,9 @@ class SupabaseSyncBridge {
     await database.customStatement(
       'INSERT INTO snapfocus_sync_outbox(table_name, record_id, payload, deleted) VALUES (?, ?, ?, 0) ON CONFLICT(table_name, record_id) DO UPDATE SET payload = excluded.payload, deleted = 0',
       [
-        Variable.withString(table),
-        Variable.withString(id),
-        Variable.withString(jsonEncode(row)),
+        table,
+        id,
+        jsonEncode(row),
       ],
     );
   }
@@ -401,9 +401,9 @@ class SupabaseSyncBridge {
     await database.customStatement(
       'INSERT INTO snapfocus_sync_outbox(table_name, record_id, payload, deleted) VALUES (?, ?, ?, 1) ON CONFLICT(table_name, record_id) DO UPDATE SET payload = excluded.payload, deleted = 1',
       [
-        Variable.withString(table),
-        Variable.withString(id),
-        Variable.withString(jsonEncode(identity)),
+        table,
+        id,
+        jsonEncode(identity),
       ],
     );
   }
@@ -474,7 +474,7 @@ class SupabaseSyncBridge {
         }
         await database.customStatement(
           'DELETE FROM snapfocus_sync_outbox WHERE table_name = ? AND record_id = ?',
-          [Variable.withString(table), Variable.withString(key)],
+          [table, key],
         );
       } catch (_) {
         // Leave the mutation queued; it will retry on next app resume or edit.

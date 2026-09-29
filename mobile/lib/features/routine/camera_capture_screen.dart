@@ -13,18 +13,22 @@ import '../../domain/snapshot.dart';
 class CameraCaptureScreen extends StatefulWidget {
   const CameraCaptureScreen({
     super.key,
-    required this.controller,
     required this.snapshots,
-    required this.routine,
+    this.controller,
+    this.routine,
     this.taskTitle,
     this.goalId,
+    this.captureDate,
+    this.saveOnly = false,
   });
 
-  final RoutineController controller;
+  final RoutineController? controller;
   final SnapshotRepository snapshots;
-  final RoutineState routine;
+  final RoutineState? routine;
   final String? taskTitle;
   final String? goalId;
+  final DateTime? captureDate;
+  final bool saveOnly;
 
   @override
   State<CameraCaptureScreen> createState() => _CameraCaptureScreenState();
@@ -63,7 +67,13 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
   }
 
   Future<void> _endRoutine() async {
-    await widget.controller.stop();
+    if (widget.saveOnly) {
+      if (mounted) Navigator.of(context).pop(false);
+      return;
+    }
+    final controller = widget.controller;
+    if (controller == null) return;
+    await controller.stop();
     if (mounted) Navigator.of(context).pop();
   }
 
@@ -80,23 +90,40 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
     try {
       final image = await camera.takePicture();
       final now = DateTime.now();
+      final capturedAt = widget.captureDate == null
+          ? now
+          : DateTime(
+              widget.captureDate!.year,
+              widget.captureDate!.month,
+              widget.captureDate!.day,
+              now.hour,
+              now.minute,
+              now.second,
+            );
       final appDirectory = await getApplicationDocumentsDirectory();
       final photoDirectory = Directory('${appDirectory.path}/snapshots');
       await photoDirectory.create(recursive: true);
       final savedImage = await File(
         image.path,
       ).copy('${photoDirectory.path}/photo-${now.microsecondsSinceEpoch}.jpg');
-      await widget.controller.unlockWithPhoto(
-        CapturedPhoto(
-          id: 'photo-${now.microsecondsSinceEpoch}',
-          path: savedImage.path,
-          capturedAt: now,
-          routineId: widget.routine.id,
-          taskTitle: widget.taskTitle,
-          goalId: widget.goalId,
-        ),
+      final photo = CapturedPhoto(
+        id: 'photo-${now.microsecondsSinceEpoch}',
+        path: savedImage.path,
+        capturedAt: capturedAt,
+        routineId: widget.routine?.id ?? 'proof-${widget.goalId ?? 'general'}',
+        taskTitle: widget.taskTitle,
+        goalId: widget.goalId,
       );
-      if (mounted) Navigator.of(context).pop();
+      if (widget.saveOnly) {
+        await widget.snapshots.add(photo);
+      } else {
+        final controller = widget.controller;
+        if (controller == null || widget.routine == null) {
+          throw StateError('A routine is required for a proof gate.');
+        }
+        await controller.unlockWithPhoto(photo);
+      }
+      if (mounted) Navigator.of(context).pop(widget.saveOnly);
     } catch (error) {
       if (mounted) {
         setState(() => _capturing = false);
@@ -115,7 +142,9 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
       appBar: AppBar(
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
-        title: const Text('A tiny reset'),
+        title: Text(
+          widget.saveOnly ? 'Take a photo to continue' : 'A tiny reset',
+        ),
       ),
       body: _error != null
           ? _CameraMessage(
@@ -131,40 +160,51 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
                 CameraPreview(camera),
                 const _CameraHint(),
                 Positioned(
-                  bottom: 32,
+                  bottom: 8,
                   left: 0,
                   right: 0,
-                  child: Center(
-                    child: Semantics(
-                      button: true,
-                      label: 'Capture snapshot',
-                      child: GestureDetector(
-                        onTap: _capturing ? null : _capture,
-                        child: Container(
-                          width: 76,
-                          height: 76,
-                          decoration: BoxDecoration(
-                            color: _capturing ? Colors.grey : Colors.white,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: const Color(0xFFE97965),
-                              width: 6,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Semantics(
+                        button: true,
+                        label: 'Capture snapshot',
+                        child: GestureDetector(
+                          onTap: _capturing ? null : _capture,
+                          child: Container(
+                            width: 76,
+                            height: 76,
+                            decoration: BoxDecoration(
+                              color: _capturing ? Colors.grey : Colors.white,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: const Color(0xFFE97965),
+                                width: 6,
+                              ),
                             ),
-                          ),
-                          child: _capturing
-                              ? const Padding(
-                                  padding: EdgeInsets.all(22),
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
+                            child: _capturing
+                                ? const Padding(
+                                    padding: EdgeInsets.all(22),
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(
+                                    Icons.camera_alt_rounded,
+                                    color: Color(0xFFE97965),
                                   ),
-                                )
-                              : const Icon(
-                                  Icons.camera_alt_rounded,
-                                  color: Color(0xFFE97965),
-                                ),
+                          ),
                         ),
                       ),
-                    ),
+                      if (widget.saveOnly)
+                        TextButton(
+                          onPressed: _capturing ? null : _endRoutine,
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.white,
+                          ),
+                          child: const Text('Skip photo'),
+                        ),
+                    ],
                   ),
                 ),
               ],

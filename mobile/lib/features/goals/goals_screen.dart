@@ -641,7 +641,6 @@ class _GoalEditorState extends State<_GoalEditor> {
   late final TextEditingController _name;
   late final TextEditingController _durationValue;
   late GoalDurationUnit _durationUnit;
-  late final TextEditingController _taskTitle;
   late final TextEditingController _taskDuration;
   late bool _scheduleTask;
   late Set<int> _weekdays;
@@ -674,7 +673,6 @@ class _GoalEditorState extends State<_GoalEditor> {
     _name = TextEditingController(text: goal?.name ?? '');
     _durationValue = TextEditingController(text: '${goal?.durationValue ?? 3}');
     _durationUnit = goal?.durationUnit ?? GoalDurationUnit.month;
-    _taskTitle = TextEditingController(text: goal?.taskTitle ?? '');
     _scheduleTask = goal?.taskTitle != null;
     _weekdays = {...?goal?.taskWeekdays};
     if (_weekdays.isEmpty) _weekdays = {1, 2, 3, 4, 5};
@@ -690,7 +688,6 @@ class _GoalEditorState extends State<_GoalEditor> {
   void dispose() {
     _name.dispose();
     _durationValue.dispose();
-    _taskTitle.dispose();
     _taskDuration.dispose();
     super.dispose();
   }
@@ -710,12 +707,6 @@ class _GoalEditorState extends State<_GoalEditor> {
         return;
       }
       final taskDuration = int.tryParse(_taskDuration.text.trim());
-      if (_scheduleTask && _taskTitle.text.trim().isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Enter a name for the recurring task.')),
-        );
-        return;
-      }
       if (_scheduleTask &&
           ((_taskRepeat == TaskRepeat.weekly && _weekdays.isEmpty) ||
               taskDuration == null ||
@@ -750,7 +741,7 @@ class _GoalEditorState extends State<_GoalEditor> {
           startedOn: old == null || old.expired
               ? _dateKey(DateTime.now())
               : old.startedOn ?? _dateKey(DateTime.now()),
-          taskTitle: _scheduleTask ? _taskTitle.text.trim() : null,
+          taskTitle: _scheduleTask ? name : null,
           taskWeekdays: _scheduleTask && _taskRepeat == TaskRepeat.weekly
               ? (_weekdays.toList()..sort())
               : const [],
@@ -823,15 +814,6 @@ class _GoalEditorState extends State<_GoalEditor> {
       ),
       if (_scheduleTask) ...[
         const SizedBox(height: 8),
-        TextField(
-          controller: _taskTitle,
-          textCapitalization: TextCapitalization.sentences,
-          decoration: const InputDecoration(
-            labelText: 'Task name',
-            hintText: 'Name this recurring task',
-          ),
-        ),
-        const SizedBox(height: 14),
         DropdownButtonFormField<TaskRepeat>(
           initialValue: _taskRepeat,
           decoration: const InputDecoration(labelText: 'Repeat'),

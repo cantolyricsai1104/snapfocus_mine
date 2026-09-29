@@ -91,6 +91,33 @@ class RoutineController {
     return resumed;
   }
 
+  Future<RoutineState> extendFocus(Duration additional) async {
+    if (additional <= Duration.zero) {
+      throw ArgumentError.value(additional, 'additional', 'Must be positive.');
+    }
+    final current = _requireState();
+    if (current.phase != RoutinePhase.focus ||
+        (current.status != RoutineStatus.running &&
+            current.status != RoutineStatus.paused)) {
+      throw StateError('Only an active focus can be extended.');
+    }
+
+    final extended = current.copyWith(
+      focusDuration: current.focusDuration + additional,
+      endsAt: current.endsAt?.add(additional),
+      pausedRemaining: current.pausedRemaining == null
+          ? null
+          : current.pausedRemaining! + additional,
+    );
+    _state = extended;
+    if (current.status == RoutineStatus.running) {
+      await _notifications.cancelPhaseEnd(current);
+      await _notifications.schedulePhaseEnd(extended);
+    }
+    await _repository.saveActive(extended);
+    return extended;
+  }
+
   Future<void> stop() async {
     final current = _state;
     if (current != null) {
