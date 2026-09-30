@@ -21,6 +21,11 @@ class RoutineScreen extends StatefulWidget {
     this.taskTitle,
     this.goalId,
     this.taskDurationMinutes,
+    this.taskCountTarget,
+    this.taskCountUnit,
+    this.taskCount = 0,
+    this.onIncrementCount,
+    this.onDecrementCount,
     this.onStop,
     this.onEndWithoutPhoto,
     this.authClient,
@@ -31,6 +36,11 @@ class RoutineScreen extends StatefulWidget {
   final String? taskTitle;
   final String? goalId;
   final int? taskDurationMinutes;
+  final int? taskCountTarget;
+  final String? taskCountUnit;
+  final int taskCount;
+  final VoidCallback? onIncrementCount;
+  final VoidCallback? onDecrementCount;
   final Future<void> Function()? onStop;
   final Future<Goal?> Function()? onEndWithoutPhoto;
   final SupabaseClient? authClient;
@@ -311,6 +321,44 @@ class _RoutineScreenState extends State<RoutineScreen>
                           : Icons.pause_rounded,
                       onPressed: isBreak || _busy ? null : _pause,
                     ),
+                  if (widget.taskCountTarget != null &&
+                      widget.taskCountUnit != null &&
+                      widget.onIncrementCount != null &&
+                      widget.onDecrementCount != null) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      'Today',
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: const Color(0xFF8D827B),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          tooltip: 'Decrease count',
+                          onPressed: _busy || widget.taskCount == 0
+                              ? null
+                              : widget.onDecrementCount,
+                          icon: const Icon(Icons.remove_circle_outline),
+                        ),
+                        Text(
+                          '${widget.taskCount} / ${widget.taskCountTarget} ${widget.taskCountUnit}',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                color: const Color(0xFF29313D),
+                                fontWeight: FontWeight.w800,
+                              ),
+                        ),
+                        IconButton(
+                          tooltip: 'Increase count',
+                          onPressed: _busy ? null : widget.onIncrementCount,
+                          icon: const Icon(Icons.add_circle_outline),
+                        ),
+                      ],
+                    ),
+                  ],
                   if (!isIdle && !isLocked && !isBreak) ...[
                     const SizedBox(height: 10),
                     OutlinedButton.icon(

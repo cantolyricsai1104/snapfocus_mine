@@ -12,13 +12,16 @@ class TaskController extends ChangeNotifier {
     required TaskRepository repository,
     required RoutineController routine,
     required GoalController goals,
+    Future<void> Function(List<TaskBlock> tasks)? onTasksChanged,
   }) : _repository = repository,
        _routine = routine,
-       _goals = goals;
+       _goals = goals,
+       _onTasksChanged = onTasksChanged;
 
   final TaskRepository _repository;
   final RoutineController _routine;
   final GoalController _goals;
+  final Future<void> Function(List<TaskBlock> tasks)? _onTasksChanged;
 
   List<TaskBlock> _tasks = const [];
   String? _selectedTaskId;
@@ -71,6 +74,7 @@ class TaskController extends ChangeNotifier {
     }
     await _backfillCompletedGoalTasks();
     _loading = false;
+    await _onTasksChanged?.call(_tasks);
     notifyListeners();
   }
 
@@ -131,16 +135,28 @@ class TaskController extends ChangeNotifier {
       }
       return;
     }
+    final scheduledTime =
+        goal.taskTime ??
+        previous?.scheduledTime ??
+        _nextAvailableTaskTime(
+          date: goal.startedOn ?? _dateString(DateTime.now()),
+          durationMinutes: goal.taskDurationMinutes,
+          excludingId: previous?.id,
+        );
     final task = TaskBlock(
       id: id,
       title: goal.taskTitle!,
       durationMinutes: goal.taskDurationMinutes,
       type: TaskType.focus,
       color: color,
-      scheduledTime: goal.taskTime ?? '09:00',
+      scheduledTime: scheduledTime,
       date: goal.startedOn ?? previous?.date ?? _dateString(DateTime.now()),
       repeat: goal.taskRepeat,
       repeatUntil: goal.endDate == null ? null : _dateString(goal.endDate!),
+      priority: goal.taskPriority,
+      countTarget: goal.taskCountTarget,
+      countUnit: goal.taskCountUnit,
+      countByDate: previous?.countByDate ?? const {},
       completed: previous?.completed ?? false,
       completedDates: previous?.completedDates ?? const [],
       goalId: goal.id,
@@ -161,6 +177,48 @@ class TaskController extends ChangeNotifier {
     }
     await _save();
   }
+
+  String _nextAvailableTaskTime({
+    required String date,
+    required int durationMinutes,
+    String? excludingId,
+  }) {
+    final scheduled = _tasks
+        .where(
+          (task) =>
+              task.id != excludingId &&
+              task.scheduledTime != null &&
+              task.isScheduledOn(date),
+        )
+        .map(
+          (task) => (
+            start: _timeToMinutes(task.scheduledTime!),
+            end: _timeToMinutes(task.scheduledTime!) + task.durationMinutes,
+          ),
+        )
+        .toList(growable: false);
+
+    for (
+      var candidate = 9 * 60;
+      candidate + durationMinutes <= 24 * 60;
+      candidate += 60
+    ) {
+      final end = candidate + durationMinutes;
+      final overlaps = scheduled.any(
+        (slot) => candidate < slot.end && end > slot.start,
+      );
+      if (!overlaps) return _formatTime(candidate);
+    }
+    return _formatTime(9 * 60);
+  }
+
+  int _timeToMinutes(String time) {
+    final parts = time.split(':').map(int.parse).toList();
+    return parts[0] * 60 + parts[1];
+  }
+
+  String _formatTime(int minutes) =>
+      '${(minutes ~/ 60).toString().padLeft(2, '0')}:${(minutes % 60).toString().padLeft(2, '0')}';
 
   Future<void> removeGoalTask(String goalId) async {
     final id = 'goal-task-$goalId';
@@ -211,6 +269,23 @@ class TaskController extends ChangeNotifier {
     final task = _find(id);
     if (task == null) return;
     await update(task.copyWith(scheduledTime: time, date: date ?? task.date));
+  }
+
+  Future<void> incrementCount(String id, String date) async {
+    final task = _find(id);
+    if (task == null || task.countTarget == null) return;
+    final counts = {...task.countByDate};
+    counts[date] = (counts[date] ?? 0) + 1;
+    await update(task.copyWith(countByDate: counts));
+  }
+
+  Future<void> decrementCount(String id, String date) async {
+    final task = _find(id);
+    if (task == null || task.countTarget == null) return;
+    final counts = {...task.countByDate};
+    final next = ((counts[date] ?? 0) - 1).clamp(0, 1 << 30).toInt();
+    counts[date] = next;
+    await update(task.copyWith(countByDate: counts));
   }
 
   Future<void> startTask(TaskBlock task) async {
@@ -316,6 +391,9 @@ class TaskController extends ChangeNotifier {
   }) async {
     final goal = _goals.findGoal(task.goalId);
     if (goal == null) return null;
+    if (goal.metricType == GoalMetricType.days) {
+      return await _goals.addProgress(goal.id, 1) ? goal : null;
+    }
     final contribution = timeMinutes > 0
         ? timeMinutes
         : task.durationMinutes.toDouble();
@@ -334,6 +412,12 @@ class TaskController extends ChangeNotifier {
   Future<void> _save() async {
     await _repository.replaceAll(_tasks);
     notifyListeners();
+    try {
+      await _onTasksChanged?.call(_tasks);
+    } catch (error, stackTrace) {
+      debugPrint('Unable to reschedule task notifications: $error');
+      debugPrintStack(stackTrace: stackTrace);
+    }
   }
 }
 

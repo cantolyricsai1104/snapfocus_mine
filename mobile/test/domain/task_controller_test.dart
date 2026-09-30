@@ -10,6 +10,55 @@ import 'package:mobile/domain/task_controller.dart';
 import 'package:mobile/domain/task_ports.dart';
 
 void main() {
+  test('spaces new recurring goal tasks into free calendar slots', () async {
+    const date = '2026-09-28';
+    final goals = GoalController(repository: _MemoryGoalRepository([]));
+    final controller = TaskController(
+      repository: _MemoryTaskRepository([]),
+      routine: RoutineController(
+        clock: _FakeClock(DateTime(2026, 9, 28, 8)),
+        repository: _MemoryRoutineRepository(),
+        notifications: _NoopNotifications(),
+      ),
+      goals: goals,
+    );
+
+    const first = Goal(
+      id: 'goal-first',
+      pillarId: 'health',
+      name: 'First',
+      metricType: GoalMetricType.time,
+      targetValue: 0,
+      currentValue: 0,
+      unit: 'minutes',
+      startedOn: date,
+      taskTitle: 'First',
+      taskDurationMinutes: 25,
+      taskRepeat: TaskRepeat.daily,
+    );
+    const second = Goal(
+      id: 'goal-second',
+      pillarId: 'health',
+      name: 'Second',
+      metricType: GoalMetricType.time,
+      targetValue: 0,
+      currentValue: 0,
+      unit: 'minutes',
+      startedOn: date,
+      taskTitle: 'Second',
+      taskDurationMinutes: 25,
+      taskRepeat: TaskRepeat.daily,
+    );
+
+    await controller.syncGoalTask(first, color: '#E97965');
+    await controller.syncGoalTask(second, color: '#8067B7');
+
+    expect(controller.tasks.map((task) => task.scheduledTime), [
+      '09:00',
+      '10:00',
+    ]);
+  });
+
   test(
     'checking an untimed goal task credits its planned focus minutes',
     () async {

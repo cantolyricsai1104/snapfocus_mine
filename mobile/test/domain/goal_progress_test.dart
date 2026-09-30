@@ -15,9 +15,23 @@ void main() {
     expect(_dailyGoal(currentMinutes: 50).progress, 1);
     expect(_dailyGoal(currentMinutes: 50).achieved, isTrue);
   });
+
+  test('goal progress can count completed days instead of minutes', () {
+    expect(
+      _dailyGoal(currentMinutes: 2, metricType: GoalMetricType.days).progress,
+      1,
+    );
+    expect(
+      _dailyGoal(currentMinutes: 2, metricType: GoalMetricType.days).achieved,
+      isTrue,
+    );
+  });
 }
 
-Goal _dailyGoal({required double currentMinutes}) {
+Goal _dailyGoal({
+  required double currentMinutes,
+  GoalMetricType metricType = GoalMetricType.time,
+}) {
   final now = DateTime.now();
   final today =
       '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
@@ -25,10 +39,10 @@ Goal _dailyGoal({required double currentMinutes}) {
     id: 'daily-goal',
     pillarId: 'health',
     name: 'Focus',
-    metricType: GoalMetricType.time,
+    metricType: metricType,
     targetValue: 0,
     currentValue: currentMinutes,
-    unit: 'minutes',
+    unit: metricType == GoalMetricType.days ? 'days' : 'minutes',
     durationValue: 1,
     durationUnit: GoalDurationUnit.day,
     startedOn: today,

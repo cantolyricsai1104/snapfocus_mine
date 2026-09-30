@@ -385,11 +385,7 @@ class SupabaseSyncBridge {
   Future<void> _queue(String table, String id, Map<String, dynamic> row) async {
     await database.customStatement(
       'INSERT INTO snapfocus_sync_outbox(table_name, record_id, payload, deleted) VALUES (?, ?, ?, 0) ON CONFLICT(table_name, record_id) DO UPDATE SET payload = excluded.payload, deleted = 0',
-      [
-        table,
-        id,
-        jsonEncode(row),
-      ],
+      [table, id, jsonEncode(row)],
     );
   }
 
@@ -400,11 +396,7 @@ class SupabaseSyncBridge {
   ) async {
     await database.customStatement(
       'INSERT INTO snapfocus_sync_outbox(table_name, record_id, payload, deleted) VALUES (?, ?, ?, 1) ON CONFLICT(table_name, record_id) DO UPDATE SET payload = excluded.payload, deleted = 1',
-      [
-        table,
-        id,
-        jsonEncode(identity),
-      ],
+      [table, id, jsonEncode(identity)],
     );
   }
 
@@ -622,6 +614,11 @@ Map<String, dynamic> _taskToRow(TaskBlock item) => {
   'scheduled_time': item.scheduledTime,
   'task_date': item.date,
   'repeat_rule': item.repeat.name,
+  'priority': item.priority,
+  'reminder_minutes_before': item.reminderMinutesBefore,
+  'count_target': item.countTarget,
+  'count_unit': item.countUnit,
+  'count_by_date': item.countByDate,
   'repeat_until': item.repeatUntil,
   'completed': item.completed,
   'completed_dates': item.completedDates,
@@ -639,6 +636,16 @@ TaskBlock _taskFromRow(Map<String, dynamic> row) => TaskBlock(
   scheduledTime: row['scheduled_time'] as String?,
   date: row['task_date'] as String,
   repeat: TaskRepeat.values.byName(row['repeat_rule'] as String),
+  priority: (row['priority'] as num?)?.toInt() ?? 1,
+  reminderMinutesBefore:
+      (row['reminder_minutes_before'] as num?)?.toInt() ?? 10,
+  countTarget: (row['count_target'] as num?)?.toInt(),
+  countUnit: row['count_unit'] as String?,
+  countByDate:
+      (row['count_by_date'] as Map?)?.map(
+        (key, value) => MapEntry(key.toString(), (value as num).toInt()),
+      ) ??
+      const {},
   repeatUntil: row['repeat_until'] as String?,
   completed: row['completed'] as bool,
   completedDates: (row['completed_dates'] as List? ?? [])
@@ -677,6 +684,9 @@ Map<String, dynamic> _goalToRow(Goal item) => {
   'task_weekdays': item.taskWeekdays,
   'task_duration_minutes': item.taskDurationMinutes,
   'task_time': item.taskTime,
+  'task_priority': item.taskPriority,
+  'task_count_target': item.taskCountTarget,
+  'task_count_unit': item.taskCountUnit,
   'duration_months': item.durationMonths,
   'duration_weeks': item.durationWeeks,
   'duration_value': item.durationValue,
@@ -700,6 +710,9 @@ Goal _goalFromRow(Map<String, dynamic> row) => Goal(
       .toList(),
   taskDurationMinutes: (row['task_duration_minutes'] as num).toInt(),
   taskTime: row['task_time'] as String?,
+  taskPriority: (row['task_priority'] as num?)?.toInt() ?? 1,
+  taskCountTarget: (row['task_count_target'] as num?)?.toInt(),
+  taskCountUnit: row['task_count_unit'] as String?,
   durationMonths: (row['duration_months'] as num).toInt(),
   durationWeeks: (row['duration_weeks'] as num).toInt(),
   durationValue: (row['duration_value'] as num).toInt(),

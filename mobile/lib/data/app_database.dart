@@ -48,6 +48,12 @@ class Tasks extends Table {
   TextColumn get scheduledTime => text().nullable()();
   TextColumn get date => text()();
   TextColumn get repeat => text()();
+  IntColumn get priority => integer().withDefault(const Constant(1))();
+  IntColumn get reminderMinutesBefore =>
+      integer().withDefault(const Constant(10))();
+  IntColumn get countTarget => integer().nullable()();
+  TextColumn get countUnit => text().nullable()();
+  TextColumn get countByDate => text().withDefault(const Constant('{}'))();
   TextColumn get repeatUntil => text().nullable()();
   BoolColumn get completed => boolean().withDefault(const Constant(false))();
   TextColumn get completedDates => text()();
@@ -85,6 +91,9 @@ class Goals extends Table {
   IntColumn get taskDurationMinutes =>
       integer().withDefault(const Constant(25))();
   TextColumn get taskTime => text().nullable()();
+  IntColumn get taskPriority => integer().withDefault(const Constant(1))();
+  IntColumn get taskCountTarget => integer().nullable()();
+  TextColumn get taskCountUnit => text().nullable()();
   IntColumn get durationMonths => integer().withDefault(const Constant(3))();
   IntColumn get durationWeeks => integer().withDefault(const Constant(0))();
   IntColumn get durationValue => integer().withDefault(const Constant(3))();
@@ -114,7 +123,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -179,6 +188,22 @@ class AppDatabase extends _$AppDatabase {
       if (from < 10) {
         if (from >= 2) await m.addColumn(snapshots, snapshots.goalId);
         await m.createTable(goalProofNotes);
+      }
+      if (from < 11) {
+        await m.addColumn(tasks, tasks.priority);
+      }
+      if (from < 12) {
+        await m.addColumn(goals, goals.taskPriority);
+      }
+      if (from < 13) {
+        await m.addColumn(tasks, tasks.countTarget);
+        await m.addColumn(tasks, tasks.countUnit);
+        await m.addColumn(tasks, tasks.countByDate);
+        await m.addColumn(goals, goals.taskCountTarget);
+        await m.addColumn(goals, goals.taskCountUnit);
+      }
+      if (from < 14) {
+        await m.addColumn(tasks, tasks.reminderMinutesBefore);
       }
     },
   );

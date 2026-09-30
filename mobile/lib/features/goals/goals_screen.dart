@@ -227,7 +227,11 @@ class _GoalsScreenState extends State<GoalsScreen> {
     final result = await showModalBottomSheet<Goal>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => _GoalEditor(pillar: pillar, initial: initial),
+      builder: (_) => _GoalEditor(
+        pillar: pillar,
+        initial: initial,
+        existingTasks: widget.tasks.tasks,
+      ),
     );
     if (result != null) {
       final savedGoal =
@@ -426,6 +430,15 @@ class _GoalCard extends StatelessWidget {
                     '${(goal.progress * 100).round()}%',
                     style: TextStyle(color: color, fontWeight: FontWeight.w800),
                   ),
+                if (goal.taskPriority > 1)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4),
+                    child: Icon(
+                      Icons.flag_rounded,
+                      size: 17,
+                      color: _goalPriorityColor(goal.taskPriority),
+                    ),
+                  ),
                 IconButton(
                   tooltip: 'View proof photos and notes',
                   onPressed: onProof,
@@ -452,7 +465,7 @@ class _GoalCard extends StatelessWidget {
             const SizedBox(height: 9),
             Semantics(
               label:
-                  '${goal.name}: ${(goal.progress * 100).round()}% of planned focus time',
+                  '${goal.name}: ${(goal.progress * 100).round()}% of planned ${goal.metricType == GoalMetricType.days ? 'days' : 'focus time'}',
               child: LinearProgressIndicator(
                 value: goal.progress,
                 minHeight: 9,
@@ -463,7 +476,7 @@ class _GoalCard extends StatelessWidget {
             ),
             const SizedBox(height: 7),
             Text(
-              '${_goalDurationLabel(goal)} · ${goal.currentValue.toStringAsFixed(0)} min focused',
+              '${_goalDurationLabel(goal)} · ${goal.currentValue.toStringAsFixed(0)} ${goal.metricType == GoalMetricType.days ? 'days completed' : 'min focused'}',
               style: const TextStyle(color: _muted, fontSize: 12),
             ),
           ],
@@ -630,8 +643,13 @@ class _PillarEditorState extends State<_PillarEditor> {
 }
 
 class _GoalEditor extends StatefulWidget {
-  const _GoalEditor({required this.pillar, this.initial});
+  const _GoalEditor({
+    required this.pillar,
+    required this.existingTasks,
+    this.initial,
+  });
   final Pillar pillar;
+  final List<TaskBlock> existingTasks;
   final Goal? initial;
   @override
   State<_GoalEditor> createState() => _GoalEditorState();
@@ -642,11 +660,15 @@ class _GoalEditorState extends State<_GoalEditor> {
   late final TextEditingController _durationValue;
   late GoalDurationUnit _durationUnit;
   late final TextEditingController _taskDuration;
+  late final TextEditingController _taskCountTarget;
+  late final TextEditingController _customTaskCountUnit;
   late bool _scheduleTask;
   late Set<int> _weekdays;
   late TaskRepeat _taskRepeat;
   late int _taskMonthDay;
   String? _taskTime;
+  late int _taskPriority;
+  String? _taskCountUnit;
   static const _weekdayLabels = [
     'Mon',
     'Tue',
@@ -681,7 +703,23 @@ class _GoalEditorState extends State<_GoalEditor> {
     _taskDuration = TextEditingController(
       text: '${goal?.taskDurationMinutes ?? 25}',
     );
-    _taskTime = goal?.taskTime ?? '09:00';
+    _taskCountTarget = TextEditingController(
+      text: goal?.taskCountTarget?.toString() ?? '',
+    );
+    _customTaskCountUnit = TextEditingController(
+      text:
+          goal?.taskCountUnit != null &&
+              !const {'times', 'pages'}.contains(goal!.taskCountUnit)
+          ? goal.taskCountUnit
+          : '',
+    );
+    _taskTime = goal?.taskTime;
+    _taskPriority = goal?.taskPriority ?? 1;
+    if (_taskCountUnit != null &&
+        !const {'times', 'pages'}.contains(_taskCountUnit)) {
+      _taskCountUnit = 'custom';
+    }
+    _taskCountUnit = goal?.taskCountUnit;
   }
 
   @override
@@ -689,6 +727,8 @@ class _GoalEditorState extends State<_GoalEditor> {
     _name.dispose();
     _durationValue.dispose();
     _taskDuration.dispose();
+    _taskCountTarget.dispose();
+    _customTaskCountUnit.dispose();
     super.dispose();
   }
 
@@ -707,6 +747,7 @@ class _GoalEditorState extends State<_GoalEditor> {
         return;
       }
       final taskDuration = int.tryParse(_taskDuration.text.trim());
+      final countTarget = int.tryParse(_taskCountTarget.text.trim());
       if (_scheduleTask &&
           ((_taskRepeat == TaskRepeat.weekly && _weekdays.isEmpty) ||
               taskDuration == null ||
@@ -728,10 +769,12 @@ class _GoalEditorState extends State<_GoalEditor> {
           id: old?.id ?? 'goal-${DateTime.now().microsecondsSinceEpoch}',
           pillarId: widget.pillar.id,
           name: name,
-          metricType: GoalMetricType.time,
+          metricType: GoalMetricType.days,
           targetValue: 0,
-          currentValue: old?.currentValue ?? 0,
-          unit: 'minutes',
+          currentValue: old?.metricType == GoalMetricType.days
+              ? old?.currentValue ?? 0
+              : 0,
+          unit: 'days',
           durationValue: duration,
           durationUnit: _durationUnit,
           durationMonths: _durationUnit == GoalDurationUnit.month
@@ -747,6 +790,15 @@ class _GoalEditorState extends State<_GoalEditor> {
               : const [],
           taskDurationMinutes: taskDuration ?? 25,
           taskTime: _scheduleTask ? _taskTime : null,
+          taskPriority: _taskPriority,
+          taskCountTarget: _scheduleTask && countTarget != null
+              ? countTarget
+              : null,
+          taskCountUnit: _scheduleTask && countTarget != null
+              ? (_taskCountUnit == 'custom'
+                    ? _customTaskCountUnit.text.trim()
+                    : _taskCountUnit)
+              : null,
           taskRepeat: _taskRepeat,
           taskMonthDay: _taskMonthDay,
         ),
@@ -797,7 +849,7 @@ class _GoalEditorState extends State<_GoalEditor> {
       ),
       const SizedBox(height: 6),
       const Text(
-        'Progress compares focused minutes with the time planned by your schedule.',
+        'Progress counts completed days. Completing the scheduled task once on a date counts as one day.',
         style: TextStyle(color: _muted, fontSize: 12),
       ),
       const SizedBox(height: 12),
@@ -903,16 +955,86 @@ class _GoalEditorState extends State<_GoalEditor> {
               .toList(),
         ),
         const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _taskCountTarget,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Daily count (optional)',
+                  hintText: 'e.g. 10',
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: DropdownButtonFormField<String?>(
+                initialValue: _taskCountUnit,
+                decoration: const InputDecoration(labelText: 'Unit'),
+                items: const [
+                  DropdownMenuItem(value: null, child: Text('No count')),
+                  DropdownMenuItem(value: 'times', child: Text('times')),
+                  DropdownMenuItem(value: 'pages', child: Text('pages')),
+                  DropdownMenuItem(value: 'custom', child: Text('Custom')),
+                ],
+                onChanged: (value) => setState(() {
+                  _taskCountUnit = value;
+                  if (value == 'custom' && _customTaskCountUnit.text.isEmpty) {
+                    _customTaskCountUnit.text = 'items';
+                  }
+                }),
+              ),
+            ),
+          ],
+        ),
+        if (_taskCountUnit == 'custom') ...[
+          const SizedBox(height: 8),
+          TextField(
+            controller: _customTaskCountUnit,
+            decoration: const InputDecoration(
+              labelText: 'Custom unit',
+              hintText: 'e.g. chapters or push-ups',
+            ),
+          ),
+        ],
+        const SizedBox(height: 6),
+        const Text(
+          'Optional manual count. It does not change the Goal day progress.',
+          style: TextStyle(color: _muted, fontSize: 12),
+        ),
+        const SizedBox(height: 12),
         OutlinedButton.icon(
           onPressed: _pickTaskTime,
           icon: const Icon(Icons.schedule_rounded),
           label: Text(
-            'Starts at ${TimeOfDay(hour: int.parse(_taskTime!.split(':')[0]), minute: int.parse(_taskTime!.split(':')[1])).format(context)}',
+            'Starts at ${TimeOfDay(hour: int.parse((_taskTime ?? _autoTaskTime).split(':')[0]), minute: int.parse((_taskTime ?? _autoTaskTime).split(':')[1])).format(context)}${_taskTime == null ? ' (auto)' : ''}',
           ),
+        ),
+        const SizedBox(height: 12),
+        const Text(
+          'Goal priority',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 8),
+        SegmentedButton<int>(
+          segments: const [
+            ButtonSegment(value: 1, label: Text('Normal')),
+            ButtonSegment(value: 2, label: Text('High')),
+            ButtonSegment(value: 3, label: Text('Urgent')),
+          ],
+          selected: {_taskPriority},
+          onSelectionChanged: (value) =>
+              setState(() => _taskPriority = value.first),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'This priority is also applied to the recurring task created for this goal.',
+          style: TextStyle(color: _muted, fontSize: 12),
         ),
         const SizedBox(height: 8),
         const Text(
-          'Scheduled at 9:00 AM by default. Tracked timer minutes add to your goal.',
+          'New recurring tasks are automatically placed in the next free hour after 9:00 AM. You can drag them later.',
           style: TextStyle(color: _muted, fontSize: 12),
         ),
       ],
@@ -920,7 +1042,10 @@ class _GoalEditorState extends State<_GoalEditor> {
   );
 
   Future<void> _pickTaskTime() async {
-    final parts = (_taskTime ?? '09:00').split(':').map(int.parse).toList();
+    final parts = (_taskTime ?? _autoTaskTime)
+        .split(':')
+        .map(int.parse)
+        .toList();
     final picked = await showTimePicker(
       context: context,
       initialTime: TimeOfDay(hour: parts[0], minute: parts[1]),
@@ -932,6 +1057,47 @@ class _GoalEditorState extends State<_GoalEditor> {
       );
     }
   }
+
+  String get _autoTaskTime {
+    final date = widget.initial?.startedOn ?? _dateKey(DateTime.now());
+    final duration = int.tryParse(_taskDuration.text.trim()) ?? 25;
+    final existingGoalTask = widget.existingTasks.where(
+      (task) => task.id == 'goal-task-${widget.initial?.id}',
+    );
+    if (existingGoalTask.isNotEmpty &&
+        existingGoalTask.first.scheduledTime != null) {
+      return existingGoalTask.first.scheduledTime!;
+    }
+    final occupied = widget.existingTasks
+        .where((task) => task.id != 'goal-task-${widget.initial?.id}')
+        .where((task) => task.isScheduledOn(date) && task.scheduledTime != null)
+        .map(
+          (task) => (
+            start: _timeMinutes(task.scheduledTime!),
+            end: _timeMinutes(task.scheduledTime!) + task.durationMinutes,
+          ),
+        )
+        .toList(growable: false);
+    for (
+      var candidate = 9 * 60;
+      candidate + duration <= 24 * 60;
+      candidate += 60
+    ) {
+      final end = candidate + duration;
+      if (!occupied.any((slot) => candidate < slot.end && end > slot.start)) {
+        return _formatTime(candidate);
+      }
+    }
+    return '09:00';
+  }
+
+  int _timeMinutes(String value) {
+    final parts = value.split(':').map(int.parse).toList();
+    return parts[0] * 60 + parts[1];
+  }
+
+  String _formatTime(int minutes) =>
+      '${(minutes ~/ 60).toString().padLeft(2, '0')}:${(minutes % 60).toString().padLeft(2, '0')}';
 
   String _ordinal(int day) {
     final suffix = day % 100 >= 11 && day % 100 <= 13
@@ -1106,6 +1272,12 @@ String _goalDurationLabel(Goal goal) {
   if (end == null) return duration;
   return '$duration · ends ${end.month}/${end.day}/${end.year}';
 }
+
+Color _goalPriorityColor(int priority) => switch (priority) {
+  3 => const Color(0xFFD64545),
+  2 => const Color(0xFFE28A2B),
+  _ => const Color(0xFF7B8794),
+};
 
 String _dateKey(DateTime date) =>
     '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';

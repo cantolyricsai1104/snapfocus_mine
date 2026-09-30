@@ -1,6 +1,6 @@
 import 'task.dart';
 
-enum GoalMetricType { numeric, time }
+enum GoalMetricType { numeric, time, days }
 
 enum GoalDurationUnit {
   day('day'),
@@ -50,6 +50,9 @@ class Goal {
     this.taskWeekdays = const [],
     this.taskDurationMinutes = 25,
     this.taskTime,
+    this.taskPriority = 1,
+    this.taskCountTarget,
+    this.taskCountUnit,
     this.taskRepeat = TaskRepeat.weekly,
     this.taskMonthDay = 1,
   });
@@ -70,6 +73,11 @@ class Goal {
   final List<int> taskWeekdays;
   final int taskDurationMinutes;
   final String? taskTime;
+
+  /// Priority inherited by the recurring task generated for this goal.
+  final int taskPriority;
+  final int? taskCountTarget;
+  final String? taskCountUnit;
   final TaskRepeat taskRepeat;
   final int taskMonthDay;
 
@@ -105,6 +113,7 @@ class Goal {
       repeatMonthDay: taskMonthDay,
     );
     var plannedMinutes = 0;
+    var plannedDays = 0;
     for (
       var day = DateTime(start.year, start.month, start.day);
       !day.isAfter(lastDate);
@@ -112,10 +121,14 @@ class Goal {
     ) {
       if (schedule.isScheduledOn(_dateKey(day))) {
         plannedMinutes += taskDurationMinutes;
+        plannedDays++;
       }
     }
-    if (plannedMinutes <= 0) return 0;
-    return (currentValue / plannedMinutes).clamp(0.0, 1.0).toDouble();
+    final planned = metricType == GoalMetricType.days
+        ? plannedDays
+        : plannedMinutes;
+    if (planned <= 0) return 0;
+    return (currentValue / planned).clamp(0.0, 1.0).toDouble();
   }
 
   bool get achieved => progress >= 1;
@@ -147,6 +160,9 @@ class Goal {
     List<int>? taskWeekdays,
     int? taskDurationMinutes,
     Object? taskTime = _unset,
+    int? taskPriority,
+    Object? taskCountTarget = _unset,
+    Object? taskCountUnit = _unset,
     TaskRepeat? taskRepeat,
     int? taskMonthDay,
   }) => Goal(
@@ -170,6 +186,13 @@ class Goal {
     taskWeekdays: taskWeekdays ?? this.taskWeekdays,
     taskDurationMinutes: taskDurationMinutes ?? this.taskDurationMinutes,
     taskTime: identical(taskTime, _unset) ? this.taskTime : taskTime as String?,
+    taskPriority: taskPriority ?? this.taskPriority,
+    taskCountTarget: identical(taskCountTarget, _unset)
+        ? this.taskCountTarget
+        : taskCountTarget as int?,
+    taskCountUnit: identical(taskCountUnit, _unset)
+        ? this.taskCountUnit
+        : taskCountUnit as String?,
     taskRepeat: taskRepeat ?? this.taskRepeat,
     taskMonthDay: taskMonthDay ?? this.taskMonthDay,
   );

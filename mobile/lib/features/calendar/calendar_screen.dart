@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -668,30 +667,35 @@ class _TimelineTaskState extends State<_TimelineTask> {
     });
   }
 
-  Widget _dragRegion({required Widget child, required bool resize}) {
-    return RawGestureDetector(
-      behavior: HitTestBehavior.opaque,
-      gestures: {
-        LongPressGestureRecognizer:
-            GestureRecognizerFactoryWithHandlers<LongPressGestureRecognizer>(
-              () => LongPressGestureRecognizer(
-                duration: const Duration(milliseconds: 220),
-              ),
-              (recognizer) {
-                recognizer.onLongPressStart = (details) =>
-                    _beginDragAt(details.globalPosition.dy);
-                recognizer.onLongPressMoveUpdate = (details) {
-                  if (resize) {
-                    _resizeTo(details.globalPosition.dy);
-                  } else {
-                    _dragTo(details.globalPosition.dy);
-                  }
-                };
-                recognizer.onLongPressEnd = (_) => _commit();
-                recognizer.onLongPressCancel = _commit;
-              },
-            ),
+  Widget _dragRegion({
+    required Widget child,
+    required bool resize,
+    required double feedbackHeight,
+  }) {
+    return Draggable<TaskBlock>(
+      data: widget.task,
+      axis: Axis.vertical,
+      feedback: Material(
+        color: Colors.transparent,
+        child: SizedBox(
+          width: widget.width,
+          height: feedbackHeight,
+          child: child,
+        ),
+      ),
+      childWhenDragging: Opacity(opacity: 0.35, child: child),
+      ignoringFeedbackPointer: true,
+      onDragUpdate: (details) {
+        final globalY = details.globalPosition.dy;
+        if (_dragStartGlobalY == null) _beginDragAt(globalY);
+        if (resize) {
+          _resizeTo(globalY);
+        } else {
+          _dragTo(globalY);
+        }
       },
+      onDragEnd: (_) => _commit(),
+      onDraggableCanceled: (_, _) => _commit(),
       child: child,
     );
   }
@@ -723,6 +727,7 @@ class _TimelineTaskState extends State<_TimelineTask> {
       height: height,
       child: _dragRegion(
         resize: false,
+        feedbackHeight: height,
         child: Stack(
           children: [
             Positioned.fill(
@@ -789,9 +794,10 @@ class _TimelineTaskState extends State<_TimelineTask> {
               left: 0,
               right: 0,
               bottom: 0,
-               height: height.clamp(28.0, 36.0).toDouble(),
-               child: _dragRegion(
-                 resize: true,
+              height: height.clamp(28.0, 36.0).toDouble(),
+              child: _dragRegion(
+                resize: true,
+                feedbackHeight: height.clamp(28.0, 36.0).toDouble(),
                 child: Semantics(
                   label: 'Resize ${task.title}',
                   hint: 'Drag up or down to change the task duration',

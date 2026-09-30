@@ -12,6 +12,11 @@ class TaskBlock {
     required this.scheduledTime,
     required this.date,
     required this.repeat,
+    this.priority = 1,
+    this.reminderMinutesBefore = 10,
+    this.countTarget,
+    this.countUnit,
+    this.countByDate = const {},
     this.repeatUntil,
     this.completed = false,
     this.completedDates = const [],
@@ -28,6 +33,15 @@ class TaskBlock {
   final String? scheduledTime;
   final String date;
   final TaskRepeat repeat;
+
+  /// 1 = normal, 2 = high, 3 = urgent.
+  final int priority;
+
+  /// 0 disables the calendar reminder; otherwise minutes before start.
+  final int reminderMinutesBefore;
+  final int? countTarget;
+  final String? countUnit;
+  final Map<String, int> countByDate;
   final String? repeatUntil;
   final bool completed;
   final List<String> completedDates;
@@ -43,6 +57,11 @@ class TaskBlock {
     Object? scheduledTime = _unset,
     String? date,
     TaskRepeat? repeat,
+    int? priority,
+    int? reminderMinutesBefore,
+    Object? countTarget = _unset,
+    Object? countUnit = _unset,
+    Map<String, int>? countByDate,
     Object? repeatUntil = _unset,
     bool? completed,
     List<String>? completedDates,
@@ -61,6 +80,16 @@ class TaskBlock {
           : scheduledTime as String?,
       date: date ?? this.date,
       repeat: repeat ?? this.repeat,
+      priority: priority ?? this.priority,
+      reminderMinutesBefore:
+          reminderMinutesBefore ?? this.reminderMinutesBefore,
+      countTarget: identical(countTarget, _unset)
+          ? this.countTarget
+          : countTarget as int?,
+      countUnit: identical(countUnit, _unset)
+          ? this.countUnit
+          : countUnit as String?,
+      countByDate: countByDate ?? this.countByDate,
       repeatUntil: identical(repeatUntil, _unset)
           ? this.repeatUntil
           : repeatUntil as String?,
@@ -116,6 +145,11 @@ class TaskBlock {
         other.scheduledTime == scheduledTime &&
         other.date == date &&
         other.repeat == repeat &&
+        other.priority == priority &&
+        other.reminderMinutesBefore == reminderMinutesBefore &&
+        other.countTarget == countTarget &&
+        other.countUnit == countUnit &&
+        _mapEquals(other.countByDate, countByDate) &&
         other.repeatUntil == repeatUntil &&
         other.completed == completed &&
         _listEquals(other.completedDates, completedDates) &&
@@ -134,6 +168,13 @@ class TaskBlock {
     scheduledTime,
     date,
     repeat,
+    priority,
+    reminderMinutesBefore,
+    countTarget,
+    countUnit,
+    Object.hashAll(
+      countByDate.entries.map((entry) => Object.hash(entry.key, entry.value)),
+    ),
     repeatUntil,
     completed,
     Object.hashAll(completedDates),
@@ -224,6 +265,14 @@ bool _intListEquals(List<int> first, List<int> second) {
   if (first.length != second.length) return false;
   for (var index = 0; index < first.length; index++) {
     if (first[index] != second[index]) return false;
+  }
+  return true;
+}
+
+bool _mapEquals(Map<String, int> first, Map<String, int> second) {
+  if (first.length != second.length) return false;
+  for (final entry in first.entries) {
+    if (second[entry.key] != entry.value) return false;
   }
   return true;
 }

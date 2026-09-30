@@ -112,13 +112,19 @@ class _MobileShellState extends ConsumerState<_MobileShell> {
   void initState() {
     super.initState();
     _selectedDate = ValueNotifier(DateTime.now());
+    ref.read(taskControllerProvider).addListener(_onTasksChanged);
     if (widget.authClient?.auth.currentUser != null) {
       _subscribeToCloudChanges();
     }
   }
 
+  void _onTasksChanged() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
+    ref.read(taskControllerProvider).removeListener(_onTasksChanged);
     _selectedDate.dispose();
     final channel = _syncChannel;
     if (channel != null) unawaited(widget.authClient?.removeChannel(channel));
@@ -182,6 +188,9 @@ class _MobileShellState extends ConsumerState<_MobileShell> {
     final tasks = ref.watch(taskControllerProvider);
     final routine = ref.watch(routineControllerProvider);
     final snapshots = ref.watch(snapshotRepositoryProvider);
+    final selectedTask = tasks.selectedTask;
+    final selectedTaskId = selectedTask?.id;
+    final todayKey = _dateKey(DateTime.now());
 
     return Scaffold(
       body: IndexedStack(
@@ -207,9 +216,18 @@ class _MobileShellState extends ConsumerState<_MobileShell> {
           RoutineScreen(
             controller: routine,
             snapshots: snapshots,
-            taskTitle: tasks.selectedTask?.title,
-            goalId: tasks.selectedTask?.goalId,
-            taskDurationMinutes: tasks.selectedTask?.durationMinutes,
+            taskTitle: selectedTask?.title,
+            goalId: selectedTask?.goalId,
+            taskDurationMinutes: selectedTask?.durationMinutes,
+            taskCountTarget: selectedTask?.countTarget,
+            taskCountUnit: selectedTask?.countUnit,
+            taskCount: selectedTask?.countByDate[todayKey] ?? 0,
+            onIncrementCount: selectedTaskId == null
+                ? null
+                : () => tasks.incrementCount(selectedTaskId, todayKey),
+            onDecrementCount: selectedTaskId == null
+                ? null
+                : () => tasks.decrementCount(selectedTaskId, todayKey),
             onStop: tasks.saveActiveTaskProgress,
             onEndWithoutPhoto: tasks.completeActiveTaskWithoutPhoto,
             authClient: widget.authClient,
@@ -247,4 +265,11 @@ class _MobileShellState extends ConsumerState<_MobileShell> {
       ),
     );
   }
+}
+
+String _dateKey(DateTime date) {
+  final year = date.year.toString().padLeft(4, '0');
+  final month = date.month.toString().padLeft(2, '0');
+  final day = date.day.toString().padLeft(2, '0');
+  return '$year-$month-$day';
 }

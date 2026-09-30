@@ -39,6 +39,7 @@ class TasksScreen extends StatefulWidget {
 class _TasksScreenState extends State<TasksScreen> {
   final Set<String> _dismissedBreaks = {};
   Timer? _activeTaskRefreshTimer;
+  bool _showRoutine = true;
 
   @override
   void initState() {
@@ -83,9 +84,16 @@ class _TasksScreenState extends State<TasksScreen> {
         }
 
         final date = _dateString(widget.selectedDate.value);
-        final tasks = widget.controller.tasks
+        final allTasks = widget.controller.tasks
             .where((task) => task.isScheduledOn(date))
             .toList(growable: false);
+        final tasks =
+            allTasks
+                .where(
+                  (task) => _showRoutine ? _isRoutine(task) : !_isRoutine(task),
+                )
+                .toList()
+              ..sort(_compareTasks);
         final focusMinutes = tasks
             .where((task) => task.type == TaskType.focus)
             .fold<int>(0, (total, task) => total + task.durationMinutes);
@@ -137,6 +145,24 @@ class _TasksScreenState extends State<TasksScreen> {
                 onToday: () => widget.selectedDate.value = DateTime.now(),
               ),
               const SizedBox(height: 14),
+              SegmentedButton<bool>(
+                segments: const [
+                  ButtonSegment(
+                    value: true,
+                    label: Text('Routine'),
+                    icon: Icon(Icons.repeat_rounded),
+                  ),
+                  ButtonSegment(
+                    value: false,
+                    label: Text('Daily'),
+                    icon: Icon(Icons.today_rounded),
+                  ),
+                ],
+                selected: {_showRoutine},
+                onSelectionChanged: (value) =>
+                    setState(() => _showRoutine = value.first),
+              ),
+              const SizedBox(height: 14),
               Row(
                 children: [
                   Expanded(
@@ -178,8 +204,8 @@ class _TasksScreenState extends State<TasksScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Tasks queue',
+                  Text(
+                    _showRoutine ? 'Routine queue' : 'Daily tasks',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
@@ -223,6 +249,8 @@ class _TasksScreenState extends State<TasksScreen> {
                     onMoveUp: () => _move(task, -1),
                     onMoveDown: () => _move(task, 1),
                     onProof: () => _openProof(task),
+                    onIncrementCount: () =>
+                        widget.controller.incrementCount(task.id, date),
                   );
                 }),
             ],
@@ -230,6 +258,25 @@ class _TasksScreenState extends State<TasksScreen> {
         );
       },
     );
+  }
+
+  bool _isRoutine(TaskBlock task) =>
+      task.goalId != null || task.repeat != TaskRepeat.none;
+
+  int _compareTasks(TaskBlock a, TaskBlock b) {
+    final priority = b.priority.compareTo(a.priority);
+    if (priority != 0 && !_showRoutine) return priority;
+    final aTime = _timeMinutes(a.scheduledTime);
+    final bTime = _timeMinutes(b.scheduledTime);
+    final time = aTime.compareTo(bTime);
+    if (time != 0) return time;
+    return a.title.compareTo(b.title);
+  }
+
+  int _timeMinutes(String? time) {
+    if (time == null) return 24 * 60;
+    final parts = time.split(':').map(int.parse).toList();
+    return parts[0] * 60 + parts[1];
   }
 
   String _activityLabel(RoutineState? state) {
@@ -610,6 +657,7 @@ class _TaskCard extends StatelessWidget {
     required this.onMoveUp,
     required this.onMoveDown,
     required this.onProof,
+    required this.onIncrementCount,
   });
 
   final TaskBlock task;
@@ -624,6 +672,7 @@ class _TaskCard extends StatelessWidget {
   final VoidCallback onMoveUp;
   final VoidCallback onMoveDown;
   final VoidCallback onProof;
+  final VoidCallback onIncrementCount;
 
   @override
   Widget build(BuildContext context) {
@@ -631,6 +680,7 @@ class _TaskCard extends StatelessWidget {
     final color = task.type == TaskType.focus
         ? const Color(0xFFE97965)
         : const Color(0xFF8067B7);
+    final priorityColor = _priorityColor(task.priority);
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       elevation: 0,
@@ -639,7 +689,9 @@ class _TaskCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
         side: BorderSide(
-          color: active ? const Color(0xFFE97965) : const Color(0xFFF1E3D7),
+          color: active
+              ? const Color(0xFFE97965)
+              : priorityColor.withValues(alpha: 0.45),
           width: active ? 1.5 : 1,
         ),
       ),
@@ -734,6 +786,48 @@ class _TaskCard extends StatelessWidget {
                           fontSize: 12,
                         ),
                       ),
+                      if (task.priority > 1)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 5),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.flag_rounded,
+                                size: 13,
+                                color: priorityColor,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                _priorityLabel(task.priority),
+                                style: TextStyle(
+                                  color: priorityColor,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      if (task.countTarget != null && task.countUnit != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: OutlinedButton.icon(
+                            onPressed: onIncrementCount,
+                            icon: const Icon(Icons.add_rounded, size: 15),
+                            label: Text(
+                              '${task.countByDate[date] ?? 0}/${task.countTarget} ${task.countUnit}',
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                              ),
+                              minimumSize: const Size(0, 28),
+                              foregroundColor: const Color(0xFF756C68),
+                              side: const BorderSide(color: Color(0xFFF1E3D7)),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -823,9 +917,14 @@ class TaskEditorSheet extends StatefulWidget {
 class _TaskEditorSheetState extends State<TaskEditorSheet> {
   late final TextEditingController _title;
   late final TextEditingController _durationText;
+  late final TextEditingController _countTargetText;
+  late final TextEditingController _customCountUnitText;
   late int _duration;
   late TaskType _type;
   late TaskRepeat _repeat;
+  late int _priority;
+  late int _reminderMinutesBefore;
+  String? _countUnit;
   String? _time;
   String? _repeatUntil;
   String? _goalId;
@@ -839,9 +938,25 @@ class _TaskEditorSheetState extends State<TaskEditorSheet> {
     _durationText = TextEditingController(
       text: '${task?.durationMinutes ?? 25}',
     );
+    _countTargetText = TextEditingController(
+      text: task?.countTarget?.toString() ?? '',
+    );
+    _customCountUnitText = TextEditingController(
+      text:
+          task?.countUnit != null &&
+              !const {'times', 'pages'}.contains(task!.countUnit)
+          ? task.countUnit
+          : '',
+    );
     _duration = task?.durationMinutes ?? 25;
     _type = task?.type ?? TaskType.focus;
     _repeat = task?.repeat ?? TaskRepeat.none;
+    _priority = task?.priority ?? 1;
+    _reminderMinutesBefore = task?.reminderMinutesBefore ?? 10;
+    _countUnit = task?.countUnit;
+    if (_countUnit != null && !const {'times', 'pages'}.contains(_countUnit)) {
+      _countUnit = 'custom';
+    }
     _time = task?.scheduledTime ?? '10:00';
     _repeatUntil = task?.repeatUntil;
     _goalId = widget.goals.any((goal) => goal.id == task?.goalId)
@@ -856,6 +971,8 @@ class _TaskEditorSheetState extends State<TaskEditorSheet> {
   void dispose() {
     _title.dispose();
     _durationText.dispose();
+    _countTargetText.dispose();
+    _customCountUnitText.dispose();
     super.dispose();
   }
 
@@ -889,6 +1006,56 @@ class _TaskEditorSheetState extends State<TaskEditorSheet> {
               ),
             ),
             const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _countTargetText,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Daily count (optional)',
+                      hintText: 'e.g. 10',
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: DropdownButtonFormField<String?>(
+                    initialValue: _countUnit,
+                    decoration: const InputDecoration(labelText: 'Unit'),
+                    items: const [
+                      DropdownMenuItem(value: null, child: Text('No count')),
+                      DropdownMenuItem(value: 'times', child: Text('times')),
+                      DropdownMenuItem(value: 'pages', child: Text('pages')),
+                      DropdownMenuItem(value: 'custom', child: Text('Custom')),
+                    ],
+                    onChanged: (value) => setState(() {
+                      _countUnit = value;
+                      if (value == 'custom' &&
+                          _customCountUnitText.text.isEmpty) {
+                        _customCountUnitText.text = 'items';
+                      }
+                    }),
+                  ),
+                ),
+              ],
+            ),
+            if (_countUnit == 'custom') ...[
+              const SizedBox(height: 8),
+              TextField(
+                controller: _customCountUnitText,
+                decoration: const InputDecoration(
+                  labelText: 'Custom unit',
+                  hintText: 'e.g. chapters or push-ups',
+                ),
+              ),
+            ],
+            const SizedBox(height: 6),
+            const Text(
+              'Manual count only; it does not change Goal day progress.',
+              style: TextStyle(color: Color(0xFF8D827B), fontSize: 12),
+            ),
+            const SizedBox(height: 12),
             SegmentedButton<TaskType>(
               segments: const [
                 ButtonSegment(
@@ -907,6 +1074,25 @@ class _TaskEditorSheetState extends State<TaskEditorSheet> {
                 _type = value.first;
                 if (_type == TaskType.breakTime) _goalId = null;
               }),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Priority',
+              style: TextStyle(
+                color: Color(0xFF756C68),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            SegmentedButton<int>(
+              segments: const [
+                ButtonSegment(value: 1, label: Text('Normal')),
+                ButtonSegment(value: 2, label: Text('High')),
+                ButtonSegment(value: 3, label: Text('Urgent')),
+              ],
+              selected: {_priority},
+              onSelectionChanged: (value) =>
+                  setState(() => _priority = value.first),
             ),
             const SizedBox(height: 12),
             const Text(
@@ -991,6 +1177,27 @@ class _TaskEditorSheetState extends State<TaskEditorSheet> {
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<int>(
+              initialValue: _reminderMinutesBefore,
+              decoration: const InputDecoration(
+                labelText: 'Calendar reminder',
+                helperText: 'Reminder before this task starts',
+              ),
+              items: const [
+                DropdownMenuItem(value: 0, child: Text('Off')),
+                DropdownMenuItem(value: 1, child: Text('1 minute before')),
+                DropdownMenuItem(value: 5, child: Text('5 minutes before')),
+                DropdownMenuItem(value: 10, child: Text('10 minutes before')),
+                DropdownMenuItem(value: 15, child: Text('15 minutes before')),
+                DropdownMenuItem(value: 30, child: Text('30 minutes before')),
+              ],
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() => _reminderMinutesBefore = value);
+                }
+              },
             ),
             if (_repeat == TaskRepeat.weekly) ...[
               const SizedBox(height: 12),
@@ -1097,7 +1304,7 @@ class _TaskEditorSheetState extends State<TaskEditorSheet> {
               ),
               const SizedBox(height: 6),
               const Text(
-                'Tracked timer minutes add to the linked goal’s focused time.',
+                'Completing this linked task counts one completed day for the goal.',
                 style: TextStyle(color: Color(0xFF8D827B), fontSize: 12),
               ),
             ],
@@ -1165,6 +1372,13 @@ class _TaskEditorSheetState extends State<TaskEditorSheet> {
         scheduledTime: _time,
         date: widget.initial?.date ?? widget.date,
         repeat: _repeat,
+        priority: _priority,
+        reminderMinutesBefore: _reminderMinutesBefore,
+        countTarget: int.tryParse(_countTargetText.text.trim()),
+        countUnit: _countUnit == 'custom'
+            ? _customCountUnitText.text.trim()
+            : _countUnit,
+        countByDate: widget.initial?.countByDate ?? const {},
         repeatUntil: _repeatUntil,
         completed: widget.initial?.completed ?? false,
         completedDates: widget.initial?.completedDates ?? const [],
@@ -1202,3 +1416,15 @@ String _month(DateTime value) => const [
   'Nov',
   'Dec',
 ][value.month - 1];
+
+Color _priorityColor(int priority) => switch (priority) {
+  3 => const Color(0xFFD64545),
+  2 => const Color(0xFFE28A2B),
+  _ => const Color(0xFF7B8794),
+};
+
+String _priorityLabel(int priority) => switch (priority) {
+  3 => 'Urgent',
+  2 => 'High priority',
+  _ => 'Normal',
+};

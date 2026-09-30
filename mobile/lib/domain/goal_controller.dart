@@ -49,19 +49,23 @@ class GoalController extends ChangeNotifier {
     _goals = stored
         .map((goal) {
           final legacyCount = goal.metricType == GoalMetricType.numeric;
+          final expectedUnit = goal.metricType == GoalMetricType.days
+              ? 'days'
+              : 'minutes';
           final needsNormalization =
               legacyCount ||
               goal.startedOn == null ||
-              goal.metricType != GoalMetricType.time ||
+              (goal.metricType != GoalMetricType.time &&
+                  goal.metricType != GoalMetricType.days) ||
               goal.targetValue != 0 ||
-              goal.unit != 'minutes';
+              goal.unit != expectedUnit;
           if (!needsNormalization) return goal;
           return goal.copyWith(
             startedOn: goal.startedOn ?? today,
             currentValue: legacyCount ? 0 : goal.currentValue,
-            metricType: GoalMetricType.time,
+            metricType: legacyCount ? GoalMetricType.time : goal.metricType,
             targetValue: 0,
-            unit: 'minutes',
+            unit: expectedUnit,
           );
         })
         .toList(growable: false);

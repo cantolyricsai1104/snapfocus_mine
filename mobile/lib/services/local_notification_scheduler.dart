@@ -6,6 +6,7 @@ import 'package:timezone/timezone.dart' as tz;
 
 import '../domain/routine.dart';
 import '../domain/routine_ports.dart';
+import '../domain/task.dart';
 
 class NotificationRequest {
   const NotificationRequest({
@@ -119,6 +120,47 @@ class FlutterNotificationPlatform implements NotificationPlatform {
     return iosGranted && androidGranted;
   }
 
+  Future<void> scheduleTaskReminders(List<TaskBlock> tasks) async {
+    if (kIsWeb) return;
+    _assertInitialized();
+    final today = DateTime.now();
+    for (var offset = 0; offset < 14; offset++) {
+      final date = DateTime(today.year, today.month, today.day + offset);
+      final dateKey = _dateKey(date);
+      for (final task in tasks) {
+        if (task.scheduledTime == null || !task.isScheduledOn(dateKey)) {
+          continue;
+        }
+        final notificationId = _taskNotificationId(task.id, dateKey);
+        if (task.reminderMinutesBefore <= 0) {
+          await cancel(notificationId);
+          continue;
+        }
+        final parts = task.scheduledTime!.split(':').map(int.parse).toList();
+        final startsAt = DateTime(
+          date.year,
+          date.month,
+          date.day,
+          parts[0],
+          parts[1],
+        );
+        final reminderAt = startsAt.subtract(
+          Duration(minutes: task.reminderMinutesBefore),
+        );
+        if (!reminderAt.isAfter(today)) continue;
+        await schedule(
+          NotificationRequest(
+            id: notificationId,
+            title: 'Upcoming task',
+            body:
+                '${task.title} starts in ${task.reminderMinutesBefore} minutes.',
+            scheduledAt: reminderAt,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Future<void> schedule(NotificationRequest request) async {
     if (kIsWeb) return;
@@ -164,3 +206,14 @@ class FlutterNotificationPlatform implements NotificationPlatform {
     }
   }
 }
+
+int _taskNotificationId(String taskId, String date) {
+  var value = 97;
+  for (final codeUnit in '$taskId:$date'.codeUnits) {
+    value = (value * 31 + codeUnit) & 0x7fffffff;
+  }
+  return value;
+}
+
+String _dateKey(DateTime value) =>
+    '${value.year}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';

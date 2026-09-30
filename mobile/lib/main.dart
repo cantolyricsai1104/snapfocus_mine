@@ -69,6 +69,7 @@ Future<void> main() async {
     repository: taskRepository,
     routine: controller,
     goals: goalController,
+    onTasksChanged: notificationPlatform.scheduleTaskReminders,
   );
 
   runApp(

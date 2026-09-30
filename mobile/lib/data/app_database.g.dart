@@ -1353,6 +1353,63 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _priorityMeta = const VerificationMeta(
+    'priority',
+  );
+  @override
+  late final GeneratedColumn<int> priority = GeneratedColumn<int>(
+    'priority',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _reminderMinutesBeforeMeta =
+      const VerificationMeta('reminderMinutesBefore');
+  @override
+  late final GeneratedColumn<int> reminderMinutesBefore = GeneratedColumn<int>(
+    'reminder_minutes_before',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(10),
+  );
+  static const VerificationMeta _countTargetMeta = const VerificationMeta(
+    'countTarget',
+  );
+  @override
+  late final GeneratedColumn<int> countTarget = GeneratedColumn<int>(
+    'count_target',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _countUnitMeta = const VerificationMeta(
+    'countUnit',
+  );
+  @override
+  late final GeneratedColumn<String> countUnit = GeneratedColumn<String>(
+    'count_unit',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _countByDateMeta = const VerificationMeta(
+    'countByDate',
+  );
+  @override
+  late final GeneratedColumn<String> countByDate = GeneratedColumn<String>(
+    'count_by_date',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('{}'),
+  );
   static const VerificationMeta _repeatUntilMeta = const VerificationMeta(
     'repeatUntil',
   );
@@ -1443,6 +1500,11 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
     scheduledTime,
     date,
     repeat,
+    priority,
+    reminderMinutesBefore,
+    countTarget,
+    countUnit,
+    countByDate,
     repeatUntil,
     completed,
     completedDates,
@@ -1527,6 +1589,45 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
       );
     } else if (isInserting) {
       context.missing(_repeatMeta);
+    }
+    if (data.containsKey('priority')) {
+      context.handle(
+        _priorityMeta,
+        priority.isAcceptableOrUnknown(data['priority']!, _priorityMeta),
+      );
+    }
+    if (data.containsKey('reminder_minutes_before')) {
+      context.handle(
+        _reminderMinutesBeforeMeta,
+        reminderMinutesBefore.isAcceptableOrUnknown(
+          data['reminder_minutes_before']!,
+          _reminderMinutesBeforeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('count_target')) {
+      context.handle(
+        _countTargetMeta,
+        countTarget.isAcceptableOrUnknown(
+          data['count_target']!,
+          _countTargetMeta,
+        ),
+      );
+    }
+    if (data.containsKey('count_unit')) {
+      context.handle(
+        _countUnitMeta,
+        countUnit.isAcceptableOrUnknown(data['count_unit']!, _countUnitMeta),
+      );
+    }
+    if (data.containsKey('count_by_date')) {
+      context.handle(
+        _countByDateMeta,
+        countByDate.isAcceptableOrUnknown(
+          data['count_by_date']!,
+          _countByDateMeta,
+        ),
+      );
     }
     if (data.containsKey('repeat_until')) {
       context.handle(
@@ -1624,6 +1725,26 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
         DriftSqlType.string,
         data['${effectivePrefix}repeat'],
       )!,
+      priority: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}priority'],
+      )!,
+      reminderMinutesBefore: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}reminder_minutes_before'],
+      )!,
+      countTarget: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}count_target'],
+      ),
+      countUnit: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}count_unit'],
+      ),
+      countByDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}count_by_date'],
+      )!,
       repeatUntil: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}repeat_until'],
@@ -1670,6 +1791,11 @@ class Task extends DataClass implements Insertable<Task> {
   final String? scheduledTime;
   final String date;
   final String repeat;
+  final int priority;
+  final int reminderMinutesBefore;
+  final int? countTarget;
+  final String? countUnit;
+  final String countByDate;
   final String? repeatUntil;
   final bool completed;
   final String completedDates;
@@ -1686,6 +1812,11 @@ class Task extends DataClass implements Insertable<Task> {
     this.scheduledTime,
     required this.date,
     required this.repeat,
+    required this.priority,
+    required this.reminderMinutesBefore,
+    this.countTarget,
+    this.countUnit,
+    required this.countByDate,
     this.repeatUntil,
     required this.completed,
     required this.completedDates,
@@ -1707,6 +1838,15 @@ class Task extends DataClass implements Insertable<Task> {
     }
     map['date'] = Variable<String>(date);
     map['repeat'] = Variable<String>(repeat);
+    map['priority'] = Variable<int>(priority);
+    map['reminder_minutes_before'] = Variable<int>(reminderMinutesBefore);
+    if (!nullToAbsent || countTarget != null) {
+      map['count_target'] = Variable<int>(countTarget);
+    }
+    if (!nullToAbsent || countUnit != null) {
+      map['count_unit'] = Variable<String>(countUnit);
+    }
+    map['count_by_date'] = Variable<String>(countByDate);
     if (!nullToAbsent || repeatUntil != null) {
       map['repeat_until'] = Variable<String>(repeatUntil);
     }
@@ -1735,6 +1875,15 @@ class Task extends DataClass implements Insertable<Task> {
           : Value(scheduledTime),
       date: Value(date),
       repeat: Value(repeat),
+      priority: Value(priority),
+      reminderMinutesBefore: Value(reminderMinutesBefore),
+      countTarget: countTarget == null && nullToAbsent
+          ? const Value.absent()
+          : Value(countTarget),
+      countUnit: countUnit == null && nullToAbsent
+          ? const Value.absent()
+          : Value(countUnit),
+      countByDate: Value(countByDate),
       repeatUntil: repeatUntil == null && nullToAbsent
           ? const Value.absent()
           : Value(repeatUntil),
@@ -1765,6 +1914,13 @@ class Task extends DataClass implements Insertable<Task> {
       scheduledTime: serializer.fromJson<String?>(json['scheduledTime']),
       date: serializer.fromJson<String>(json['date']),
       repeat: serializer.fromJson<String>(json['repeat']),
+      priority: serializer.fromJson<int>(json['priority']),
+      reminderMinutesBefore: serializer.fromJson<int>(
+        json['reminderMinutesBefore'],
+      ),
+      countTarget: serializer.fromJson<int?>(json['countTarget']),
+      countUnit: serializer.fromJson<String?>(json['countUnit']),
+      countByDate: serializer.fromJson<String>(json['countByDate']),
       repeatUntil: serializer.fromJson<String?>(json['repeatUntil']),
       completed: serializer.fromJson<bool>(json['completed']),
       completedDates: serializer.fromJson<String>(json['completedDates']),
@@ -1786,6 +1942,11 @@ class Task extends DataClass implements Insertable<Task> {
       'scheduledTime': serializer.toJson<String?>(scheduledTime),
       'date': serializer.toJson<String>(date),
       'repeat': serializer.toJson<String>(repeat),
+      'priority': serializer.toJson<int>(priority),
+      'reminderMinutesBefore': serializer.toJson<int>(reminderMinutesBefore),
+      'countTarget': serializer.toJson<int?>(countTarget),
+      'countUnit': serializer.toJson<String?>(countUnit),
+      'countByDate': serializer.toJson<String>(countByDate),
       'repeatUntil': serializer.toJson<String?>(repeatUntil),
       'completed': serializer.toJson<bool>(completed),
       'completedDates': serializer.toJson<String>(completedDates),
@@ -1805,6 +1966,11 @@ class Task extends DataClass implements Insertable<Task> {
     Value<String?> scheduledTime = const Value.absent(),
     String? date,
     String? repeat,
+    int? priority,
+    int? reminderMinutesBefore,
+    Value<int?> countTarget = const Value.absent(),
+    Value<String?> countUnit = const Value.absent(),
+    String? countByDate,
     Value<String?> repeatUntil = const Value.absent(),
     bool? completed,
     String? completedDates,
@@ -1823,6 +1989,11 @@ class Task extends DataClass implements Insertable<Task> {
         : this.scheduledTime,
     date: date ?? this.date,
     repeat: repeat ?? this.repeat,
+    priority: priority ?? this.priority,
+    reminderMinutesBefore: reminderMinutesBefore ?? this.reminderMinutesBefore,
+    countTarget: countTarget.present ? countTarget.value : this.countTarget,
+    countUnit: countUnit.present ? countUnit.value : this.countUnit,
+    countByDate: countByDate ?? this.countByDate,
     repeatUntil: repeatUntil.present ? repeatUntil.value : this.repeatUntil,
     completed: completed ?? this.completed,
     completedDates: completedDates ?? this.completedDates,
@@ -1847,6 +2018,17 @@ class Task extends DataClass implements Insertable<Task> {
           : this.scheduledTime,
       date: data.date.present ? data.date.value : this.date,
       repeat: data.repeat.present ? data.repeat.value : this.repeat,
+      priority: data.priority.present ? data.priority.value : this.priority,
+      reminderMinutesBefore: data.reminderMinutesBefore.present
+          ? data.reminderMinutesBefore.value
+          : this.reminderMinutesBefore,
+      countTarget: data.countTarget.present
+          ? data.countTarget.value
+          : this.countTarget,
+      countUnit: data.countUnit.present ? data.countUnit.value : this.countUnit,
+      countByDate: data.countByDate.present
+          ? data.countByDate.value
+          : this.countByDate,
       repeatUntil: data.repeatUntil.present
           ? data.repeatUntil.value
           : this.repeatUntil,
@@ -1876,6 +2058,11 @@ class Task extends DataClass implements Insertable<Task> {
           ..write('scheduledTime: $scheduledTime, ')
           ..write('date: $date, ')
           ..write('repeat: $repeat, ')
+          ..write('priority: $priority, ')
+          ..write('reminderMinutesBefore: $reminderMinutesBefore, ')
+          ..write('countTarget: $countTarget, ')
+          ..write('countUnit: $countUnit, ')
+          ..write('countByDate: $countByDate, ')
           ..write('repeatUntil: $repeatUntil, ')
           ..write('completed: $completed, ')
           ..write('completedDates: $completedDates, ')
@@ -1897,6 +2084,11 @@ class Task extends DataClass implements Insertable<Task> {
     scheduledTime,
     date,
     repeat,
+    priority,
+    reminderMinutesBefore,
+    countTarget,
+    countUnit,
+    countByDate,
     repeatUntil,
     completed,
     completedDates,
@@ -1917,6 +2109,11 @@ class Task extends DataClass implements Insertable<Task> {
           other.scheduledTime == this.scheduledTime &&
           other.date == this.date &&
           other.repeat == this.repeat &&
+          other.priority == this.priority &&
+          other.reminderMinutesBefore == this.reminderMinutesBefore &&
+          other.countTarget == this.countTarget &&
+          other.countUnit == this.countUnit &&
+          other.countByDate == this.countByDate &&
           other.repeatUntil == this.repeatUntil &&
           other.completed == this.completed &&
           other.completedDates == this.completedDates &&
@@ -1935,6 +2132,11 @@ class TasksCompanion extends UpdateCompanion<Task> {
   final Value<String?> scheduledTime;
   final Value<String> date;
   final Value<String> repeat;
+  final Value<int> priority;
+  final Value<int> reminderMinutesBefore;
+  final Value<int?> countTarget;
+  final Value<String?> countUnit;
+  final Value<String> countByDate;
   final Value<String?> repeatUntil;
   final Value<bool> completed;
   final Value<String> completedDates;
@@ -1952,6 +2154,11 @@ class TasksCompanion extends UpdateCompanion<Task> {
     this.scheduledTime = const Value.absent(),
     this.date = const Value.absent(),
     this.repeat = const Value.absent(),
+    this.priority = const Value.absent(),
+    this.reminderMinutesBefore = const Value.absent(),
+    this.countTarget = const Value.absent(),
+    this.countUnit = const Value.absent(),
+    this.countByDate = const Value.absent(),
     this.repeatUntil = const Value.absent(),
     this.completed = const Value.absent(),
     this.completedDates = const Value.absent(),
@@ -1970,6 +2177,11 @@ class TasksCompanion extends UpdateCompanion<Task> {
     this.scheduledTime = const Value.absent(),
     required String date,
     required String repeat,
+    this.priority = const Value.absent(),
+    this.reminderMinutesBefore = const Value.absent(),
+    this.countTarget = const Value.absent(),
+    this.countUnit = const Value.absent(),
+    this.countByDate = const Value.absent(),
     this.repeatUntil = const Value.absent(),
     this.completed = const Value.absent(),
     required String completedDates,
@@ -1996,6 +2208,11 @@ class TasksCompanion extends UpdateCompanion<Task> {
     Expression<String>? scheduledTime,
     Expression<String>? date,
     Expression<String>? repeat,
+    Expression<int>? priority,
+    Expression<int>? reminderMinutesBefore,
+    Expression<int>? countTarget,
+    Expression<String>? countUnit,
+    Expression<String>? countByDate,
     Expression<String>? repeatUntil,
     Expression<bool>? completed,
     Expression<String>? completedDates,
@@ -2014,6 +2231,12 @@ class TasksCompanion extends UpdateCompanion<Task> {
       if (scheduledTime != null) 'scheduled_time': scheduledTime,
       if (date != null) 'date': date,
       if (repeat != null) 'repeat': repeat,
+      if (priority != null) 'priority': priority,
+      if (reminderMinutesBefore != null)
+        'reminder_minutes_before': reminderMinutesBefore,
+      if (countTarget != null) 'count_target': countTarget,
+      if (countUnit != null) 'count_unit': countUnit,
+      if (countByDate != null) 'count_by_date': countByDate,
       if (repeatUntil != null) 'repeat_until': repeatUntil,
       if (completed != null) 'completed': completed,
       if (completedDates != null) 'completed_dates': completedDates,
@@ -2034,6 +2257,11 @@ class TasksCompanion extends UpdateCompanion<Task> {
     Value<String?>? scheduledTime,
     Value<String>? date,
     Value<String>? repeat,
+    Value<int>? priority,
+    Value<int>? reminderMinutesBefore,
+    Value<int?>? countTarget,
+    Value<String?>? countUnit,
+    Value<String>? countByDate,
     Value<String?>? repeatUntil,
     Value<bool>? completed,
     Value<String>? completedDates,
@@ -2052,6 +2280,12 @@ class TasksCompanion extends UpdateCompanion<Task> {
       scheduledTime: scheduledTime ?? this.scheduledTime,
       date: date ?? this.date,
       repeat: repeat ?? this.repeat,
+      priority: priority ?? this.priority,
+      reminderMinutesBefore:
+          reminderMinutesBefore ?? this.reminderMinutesBefore,
+      countTarget: countTarget ?? this.countTarget,
+      countUnit: countUnit ?? this.countUnit,
+      countByDate: countByDate ?? this.countByDate,
       repeatUntil: repeatUntil ?? this.repeatUntil,
       completed: completed ?? this.completed,
       completedDates: completedDates ?? this.completedDates,
@@ -2089,6 +2323,23 @@ class TasksCompanion extends UpdateCompanion<Task> {
     }
     if (repeat.present) {
       map['repeat'] = Variable<String>(repeat.value);
+    }
+    if (priority.present) {
+      map['priority'] = Variable<int>(priority.value);
+    }
+    if (reminderMinutesBefore.present) {
+      map['reminder_minutes_before'] = Variable<int>(
+        reminderMinutesBefore.value,
+      );
+    }
+    if (countTarget.present) {
+      map['count_target'] = Variable<int>(countTarget.value);
+    }
+    if (countUnit.present) {
+      map['count_unit'] = Variable<String>(countUnit.value);
+    }
+    if (countByDate.present) {
+      map['count_by_date'] = Variable<String>(countByDate.value);
     }
     if (repeatUntil.present) {
       map['repeat_until'] = Variable<String>(repeatUntil.value);
@@ -2128,6 +2379,11 @@ class TasksCompanion extends UpdateCompanion<Task> {
           ..write('scheduledTime: $scheduledTime, ')
           ..write('date: $date, ')
           ..write('repeat: $repeat, ')
+          ..write('priority: $priority, ')
+          ..write('reminderMinutesBefore: $reminderMinutesBefore, ')
+          ..write('countTarget: $countTarget, ')
+          ..write('countUnit: $countUnit, ')
+          ..write('countByDate: $countByDate, ')
           ..write('repeatUntil: $repeatUntil, ')
           ..write('completed: $completed, ')
           ..write('completedDates: $completedDates, ')
@@ -2584,6 +2840,40 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _taskPriorityMeta = const VerificationMeta(
+    'taskPriority',
+  );
+  @override
+  late final GeneratedColumn<int> taskPriority = GeneratedColumn<int>(
+    'task_priority',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _taskCountTargetMeta = const VerificationMeta(
+    'taskCountTarget',
+  );
+  @override
+  late final GeneratedColumn<int> taskCountTarget = GeneratedColumn<int>(
+    'task_count_target',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _taskCountUnitMeta = const VerificationMeta(
+    'taskCountUnit',
+  );
+  @override
+  late final GeneratedColumn<String> taskCountUnit = GeneratedColumn<String>(
+    'task_count_unit',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _durationMonthsMeta = const VerificationMeta(
     'durationMonths',
   );
@@ -2682,6 +2972,9 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
     taskWeekdays,
     taskDurationMinutes,
     taskTime,
+    taskPriority,
+    taskCountTarget,
+    taskCountUnit,
     durationMonths,
     durationWeeks,
     durationValue,
@@ -2799,6 +3092,33 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
       context.handle(
         _taskTimeMeta,
         taskTime.isAcceptableOrUnknown(data['task_time']!, _taskTimeMeta),
+      );
+    }
+    if (data.containsKey('task_priority')) {
+      context.handle(
+        _taskPriorityMeta,
+        taskPriority.isAcceptableOrUnknown(
+          data['task_priority']!,
+          _taskPriorityMeta,
+        ),
+      );
+    }
+    if (data.containsKey('task_count_target')) {
+      context.handle(
+        _taskCountTargetMeta,
+        taskCountTarget.isAcceptableOrUnknown(
+          data['task_count_target']!,
+          _taskCountTargetMeta,
+        ),
+      );
+    }
+    if (data.containsKey('task_count_unit')) {
+      context.handle(
+        _taskCountUnitMeta,
+        taskCountUnit.isAcceptableOrUnknown(
+          data['task_count_unit']!,
+          _taskCountUnitMeta,
+        ),
       );
     }
     if (data.containsKey('duration_months')) {
@@ -2919,6 +3239,18 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
         DriftSqlType.string,
         data['${effectivePrefix}task_time'],
       ),
+      taskPriority: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}task_priority'],
+      )!,
+      taskCountTarget: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}task_count_target'],
+      ),
+      taskCountUnit: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}task_count_unit'],
+      ),
       durationMonths: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}duration_months'],
@@ -2970,6 +3302,9 @@ class Goal extends DataClass implements Insertable<Goal> {
   final String taskWeekdays;
   final int taskDurationMinutes;
   final String? taskTime;
+  final int taskPriority;
+  final int? taskCountTarget;
+  final String? taskCountUnit;
   final int durationMonths;
   final int durationWeeks;
   final int durationValue;
@@ -2991,6 +3326,9 @@ class Goal extends DataClass implements Insertable<Goal> {
     required this.taskWeekdays,
     required this.taskDurationMinutes,
     this.taskTime,
+    required this.taskPriority,
+    this.taskCountTarget,
+    this.taskCountUnit,
     required this.durationMonths,
     required this.durationWeeks,
     required this.durationValue,
@@ -3018,6 +3356,13 @@ class Goal extends DataClass implements Insertable<Goal> {
     map['task_duration_minutes'] = Variable<int>(taskDurationMinutes);
     if (!nullToAbsent || taskTime != null) {
       map['task_time'] = Variable<String>(taskTime);
+    }
+    map['task_priority'] = Variable<int>(taskPriority);
+    if (!nullToAbsent || taskCountTarget != null) {
+      map['task_count_target'] = Variable<int>(taskCountTarget);
+    }
+    if (!nullToAbsent || taskCountUnit != null) {
+      map['task_count_unit'] = Variable<String>(taskCountUnit);
     }
     map['duration_months'] = Variable<int>(durationMonths);
     map['duration_weeks'] = Variable<int>(durationWeeks);
@@ -3050,6 +3395,13 @@ class Goal extends DataClass implements Insertable<Goal> {
       taskTime: taskTime == null && nullToAbsent
           ? const Value.absent()
           : Value(taskTime),
+      taskPriority: Value(taskPriority),
+      taskCountTarget: taskCountTarget == null && nullToAbsent
+          ? const Value.absent()
+          : Value(taskCountTarget),
+      taskCountUnit: taskCountUnit == null && nullToAbsent
+          ? const Value.absent()
+          : Value(taskCountUnit),
       durationMonths: Value(durationMonths),
       durationWeeks: Value(durationWeeks),
       durationValue: Value(durationValue),
@@ -3083,6 +3435,9 @@ class Goal extends DataClass implements Insertable<Goal> {
         json['taskDurationMinutes'],
       ),
       taskTime: serializer.fromJson<String?>(json['taskTime']),
+      taskPriority: serializer.fromJson<int>(json['taskPriority']),
+      taskCountTarget: serializer.fromJson<int?>(json['taskCountTarget']),
+      taskCountUnit: serializer.fromJson<String?>(json['taskCountUnit']),
       durationMonths: serializer.fromJson<int>(json['durationMonths']),
       durationWeeks: serializer.fromJson<int>(json['durationWeeks']),
       durationValue: serializer.fromJson<int>(json['durationValue']),
@@ -3109,6 +3464,9 @@ class Goal extends DataClass implements Insertable<Goal> {
       'taskWeekdays': serializer.toJson<String>(taskWeekdays),
       'taskDurationMinutes': serializer.toJson<int>(taskDurationMinutes),
       'taskTime': serializer.toJson<String?>(taskTime),
+      'taskPriority': serializer.toJson<int>(taskPriority),
+      'taskCountTarget': serializer.toJson<int?>(taskCountTarget),
+      'taskCountUnit': serializer.toJson<String?>(taskCountUnit),
       'durationMonths': serializer.toJson<int>(durationMonths),
       'durationWeeks': serializer.toJson<int>(durationWeeks),
       'durationValue': serializer.toJson<int>(durationValue),
@@ -3133,6 +3491,9 @@ class Goal extends DataClass implements Insertable<Goal> {
     String? taskWeekdays,
     int? taskDurationMinutes,
     Value<String?> taskTime = const Value.absent(),
+    int? taskPriority,
+    Value<int?> taskCountTarget = const Value.absent(),
+    Value<String?> taskCountUnit = const Value.absent(),
     int? durationMonths,
     int? durationWeeks,
     int? durationValue,
@@ -3154,6 +3515,13 @@ class Goal extends DataClass implements Insertable<Goal> {
     taskWeekdays: taskWeekdays ?? this.taskWeekdays,
     taskDurationMinutes: taskDurationMinutes ?? this.taskDurationMinutes,
     taskTime: taskTime.present ? taskTime.value : this.taskTime,
+    taskPriority: taskPriority ?? this.taskPriority,
+    taskCountTarget: taskCountTarget.present
+        ? taskCountTarget.value
+        : this.taskCountTarget,
+    taskCountUnit: taskCountUnit.present
+        ? taskCountUnit.value
+        : this.taskCountUnit,
     durationMonths: durationMonths ?? this.durationMonths,
     durationWeeks: durationWeeks ?? this.durationWeeks,
     durationValue: durationValue ?? this.durationValue,
@@ -3187,6 +3555,15 @@ class Goal extends DataClass implements Insertable<Goal> {
           ? data.taskDurationMinutes.value
           : this.taskDurationMinutes,
       taskTime: data.taskTime.present ? data.taskTime.value : this.taskTime,
+      taskPriority: data.taskPriority.present
+          ? data.taskPriority.value
+          : this.taskPriority,
+      taskCountTarget: data.taskCountTarget.present
+          ? data.taskCountTarget.value
+          : this.taskCountTarget,
+      taskCountUnit: data.taskCountUnit.present
+          ? data.taskCountUnit.value
+          : this.taskCountUnit,
       durationMonths: data.durationMonths.present
           ? data.durationMonths.value
           : this.durationMonths,
@@ -3225,6 +3602,9 @@ class Goal extends DataClass implements Insertable<Goal> {
           ..write('taskWeekdays: $taskWeekdays, ')
           ..write('taskDurationMinutes: $taskDurationMinutes, ')
           ..write('taskTime: $taskTime, ')
+          ..write('taskPriority: $taskPriority, ')
+          ..write('taskCountTarget: $taskCountTarget, ')
+          ..write('taskCountUnit: $taskCountUnit, ')
           ..write('durationMonths: $durationMonths, ')
           ..write('durationWeeks: $durationWeeks, ')
           ..write('durationValue: $durationValue, ')
@@ -3237,7 +3617,7 @@ class Goal extends DataClass implements Insertable<Goal> {
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     pillarId,
     name,
@@ -3251,6 +3631,9 @@ class Goal extends DataClass implements Insertable<Goal> {
     taskWeekdays,
     taskDurationMinutes,
     taskTime,
+    taskPriority,
+    taskCountTarget,
+    taskCountUnit,
     durationMonths,
     durationWeeks,
     durationValue,
@@ -3258,7 +3641,7 @@ class Goal extends DataClass implements Insertable<Goal> {
     startedOn,
     taskRepeat,
     taskMonthDay,
-  );
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3276,6 +3659,9 @@ class Goal extends DataClass implements Insertable<Goal> {
           other.taskWeekdays == this.taskWeekdays &&
           other.taskDurationMinutes == this.taskDurationMinutes &&
           other.taskTime == this.taskTime &&
+          other.taskPriority == this.taskPriority &&
+          other.taskCountTarget == this.taskCountTarget &&
+          other.taskCountUnit == this.taskCountUnit &&
           other.durationMonths == this.durationMonths &&
           other.durationWeeks == this.durationWeeks &&
           other.durationValue == this.durationValue &&
@@ -3299,6 +3685,9 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
   final Value<String> taskWeekdays;
   final Value<int> taskDurationMinutes;
   final Value<String?> taskTime;
+  final Value<int> taskPriority;
+  final Value<int?> taskCountTarget;
+  final Value<String?> taskCountUnit;
   final Value<int> durationMonths;
   final Value<int> durationWeeks;
   final Value<int> durationValue;
@@ -3321,6 +3710,9 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     this.taskWeekdays = const Value.absent(),
     this.taskDurationMinutes = const Value.absent(),
     this.taskTime = const Value.absent(),
+    this.taskPriority = const Value.absent(),
+    this.taskCountTarget = const Value.absent(),
+    this.taskCountUnit = const Value.absent(),
     this.durationMonths = const Value.absent(),
     this.durationWeeks = const Value.absent(),
     this.durationValue = const Value.absent(),
@@ -3344,6 +3736,9 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     this.taskWeekdays = const Value.absent(),
     this.taskDurationMinutes = const Value.absent(),
     this.taskTime = const Value.absent(),
+    this.taskPriority = const Value.absent(),
+    this.taskCountTarget = const Value.absent(),
+    this.taskCountUnit = const Value.absent(),
     this.durationMonths = const Value.absent(),
     this.durationWeeks = const Value.absent(),
     this.durationValue = const Value.absent(),
@@ -3372,6 +3767,9 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     Expression<String>? taskWeekdays,
     Expression<int>? taskDurationMinutes,
     Expression<String>? taskTime,
+    Expression<int>? taskPriority,
+    Expression<int>? taskCountTarget,
+    Expression<String>? taskCountUnit,
     Expression<int>? durationMonths,
     Expression<int>? durationWeeks,
     Expression<int>? durationValue,
@@ -3396,6 +3794,9 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
       if (taskDurationMinutes != null)
         'task_duration_minutes': taskDurationMinutes,
       if (taskTime != null) 'task_time': taskTime,
+      if (taskPriority != null) 'task_priority': taskPriority,
+      if (taskCountTarget != null) 'task_count_target': taskCountTarget,
+      if (taskCountUnit != null) 'task_count_unit': taskCountUnit,
       if (durationMonths != null) 'duration_months': durationMonths,
       if (durationWeeks != null) 'duration_weeks': durationWeeks,
       if (durationValue != null) 'duration_value': durationValue,
@@ -3421,6 +3822,9 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     Value<String>? taskWeekdays,
     Value<int>? taskDurationMinutes,
     Value<String?>? taskTime,
+    Value<int>? taskPriority,
+    Value<int?>? taskCountTarget,
+    Value<String?>? taskCountUnit,
     Value<int>? durationMonths,
     Value<int>? durationWeeks,
     Value<int>? durationValue,
@@ -3444,6 +3848,9 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
       taskWeekdays: taskWeekdays ?? this.taskWeekdays,
       taskDurationMinutes: taskDurationMinutes ?? this.taskDurationMinutes,
       taskTime: taskTime ?? this.taskTime,
+      taskPriority: taskPriority ?? this.taskPriority,
+      taskCountTarget: taskCountTarget ?? this.taskCountTarget,
+      taskCountUnit: taskCountUnit ?? this.taskCountUnit,
       durationMonths: durationMonths ?? this.durationMonths,
       durationWeeks: durationWeeks ?? this.durationWeeks,
       durationValue: durationValue ?? this.durationValue,
@@ -3497,6 +3904,15 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     if (taskTime.present) {
       map['task_time'] = Variable<String>(taskTime.value);
     }
+    if (taskPriority.present) {
+      map['task_priority'] = Variable<int>(taskPriority.value);
+    }
+    if (taskCountTarget.present) {
+      map['task_count_target'] = Variable<int>(taskCountTarget.value);
+    }
+    if (taskCountUnit.present) {
+      map['task_count_unit'] = Variable<String>(taskCountUnit.value);
+    }
     if (durationMonths.present) {
       map['duration_months'] = Variable<int>(durationMonths.value);
     }
@@ -3540,6 +3956,9 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
           ..write('taskWeekdays: $taskWeekdays, ')
           ..write('taskDurationMinutes: $taskDurationMinutes, ')
           ..write('taskTime: $taskTime, ')
+          ..write('taskPriority: $taskPriority, ')
+          ..write('taskCountTarget: $taskCountTarget, ')
+          ..write('taskCountUnit: $taskCountUnit, ')
           ..write('durationMonths: $durationMonths, ')
           ..write('durationWeeks: $durationWeeks, ')
           ..write('durationValue: $durationValue, ')
@@ -4253,6 +4672,11 @@ typedef $$TasksTableCreateCompanionBuilder =
       Value<String?> scheduledTime,
       required String date,
       required String repeat,
+      Value<int> priority,
+      Value<int> reminderMinutesBefore,
+      Value<int?> countTarget,
+      Value<String?> countUnit,
+      Value<String> countByDate,
       Value<String?> repeatUntil,
       Value<bool> completed,
       required String completedDates,
@@ -4272,6 +4696,11 @@ typedef $$TasksTableUpdateCompanionBuilder =
       Value<String?> scheduledTime,
       Value<String> date,
       Value<String> repeat,
+      Value<int> priority,
+      Value<int> reminderMinutesBefore,
+      Value<int?> countTarget,
+      Value<String?> countUnit,
+      Value<String> countByDate,
       Value<String?> repeatUntil,
       Value<bool> completed,
       Value<String> completedDates,
@@ -4327,6 +4756,31 @@ class $$TasksTableFilterComposer extends Composer<_$AppDatabase, $TasksTable> {
 
   ColumnFilters<String> get repeat => $composableBuilder(
     column: $table.repeat,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get priority => $composableBuilder(
+    column: $table.priority,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get reminderMinutesBefore => $composableBuilder(
+    column: $table.reminderMinutesBefore,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get countTarget => $composableBuilder(
+    column: $table.countTarget,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get countUnit => $composableBuilder(
+    column: $table.countUnit,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get countByDate => $composableBuilder(
+    column: $table.countByDate,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4415,6 +4869,31 @@ class $$TasksTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get priority => $composableBuilder(
+    column: $table.priority,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get reminderMinutesBefore => $composableBuilder(
+    column: $table.reminderMinutesBefore,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get countTarget => $composableBuilder(
+    column: $table.countTarget,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get countUnit => $composableBuilder(
+    column: $table.countUnit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get countByDate => $composableBuilder(
+    column: $table.countByDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get repeatUntil => $composableBuilder(
     column: $table.repeatUntil,
     builder: (column) => ColumnOrderings(column),
@@ -4488,6 +4967,27 @@ class $$TasksTableAnnotationComposer
   GeneratedColumn<String> get repeat =>
       $composableBuilder(column: $table.repeat, builder: (column) => column);
 
+  GeneratedColumn<int> get priority =>
+      $composableBuilder(column: $table.priority, builder: (column) => column);
+
+  GeneratedColumn<int> get reminderMinutesBefore => $composableBuilder(
+    column: $table.reminderMinutesBefore,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get countTarget => $composableBuilder(
+    column: $table.countTarget,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get countUnit =>
+      $composableBuilder(column: $table.countUnit, builder: (column) => column);
+
+  GeneratedColumn<String> get countByDate => $composableBuilder(
+    column: $table.countByDate,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get repeatUntil => $composableBuilder(
     column: $table.repeatUntil,
     builder: (column) => column,
@@ -4554,6 +5054,11 @@ class $$TasksTableTableManager
                 Value<String?> scheduledTime = const Value.absent(),
                 Value<String> date = const Value.absent(),
                 Value<String> repeat = const Value.absent(),
+                Value<int> priority = const Value.absent(),
+                Value<int> reminderMinutesBefore = const Value.absent(),
+                Value<int?> countTarget = const Value.absent(),
+                Value<String?> countUnit = const Value.absent(),
+                Value<String> countByDate = const Value.absent(),
                 Value<String?> repeatUntil = const Value.absent(),
                 Value<bool> completed = const Value.absent(),
                 Value<String> completedDates = const Value.absent(),
@@ -4571,6 +5076,11 @@ class $$TasksTableTableManager
                 scheduledTime: scheduledTime,
                 date: date,
                 repeat: repeat,
+                priority: priority,
+                reminderMinutesBefore: reminderMinutesBefore,
+                countTarget: countTarget,
+                countUnit: countUnit,
+                countByDate: countByDate,
                 repeatUntil: repeatUntil,
                 completed: completed,
                 completedDates: completedDates,
@@ -4590,6 +5100,11 @@ class $$TasksTableTableManager
                 Value<String?> scheduledTime = const Value.absent(),
                 required String date,
                 required String repeat,
+                Value<int> priority = const Value.absent(),
+                Value<int> reminderMinutesBefore = const Value.absent(),
+                Value<int?> countTarget = const Value.absent(),
+                Value<String?> countUnit = const Value.absent(),
+                Value<String> countByDate = const Value.absent(),
                 Value<String?> repeatUntil = const Value.absent(),
                 Value<bool> completed = const Value.absent(),
                 required String completedDates,
@@ -4607,6 +5122,11 @@ class $$TasksTableTableManager
                 scheduledTime: scheduledTime,
                 date: date,
                 repeat: repeat,
+                priority: priority,
+                reminderMinutesBefore: reminderMinutesBefore,
+                countTarget: countTarget,
+                countUnit: countUnit,
+                countByDate: countByDate,
                 repeatUntil: repeatUntil,
                 completed: completed,
                 completedDates: completedDates,
@@ -4828,6 +5348,9 @@ typedef $$GoalsTableCreateCompanionBuilder =
       Value<String> taskWeekdays,
       Value<int> taskDurationMinutes,
       Value<String?> taskTime,
+      Value<int> taskPriority,
+      Value<int?> taskCountTarget,
+      Value<String?> taskCountUnit,
       Value<int> durationMonths,
       Value<int> durationWeeks,
       Value<int> durationValue,
@@ -4852,6 +5375,9 @@ typedef $$GoalsTableUpdateCompanionBuilder =
       Value<String> taskWeekdays,
       Value<int> taskDurationMinutes,
       Value<String?> taskTime,
+      Value<int> taskPriority,
+      Value<int?> taskCountTarget,
+      Value<String?> taskCountUnit,
       Value<int> durationMonths,
       Value<int> durationWeeks,
       Value<int> durationValue,
@@ -4932,6 +5458,21 @@ class $$GoalsTableFilterComposer extends Composer<_$AppDatabase, $GoalsTable> {
 
   ColumnFilters<String> get taskTime => $composableBuilder(
     column: $table.taskTime,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get taskPriority => $composableBuilder(
+    column: $table.taskPriority,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get taskCountTarget => $composableBuilder(
+    column: $table.taskCountTarget,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get taskCountUnit => $composableBuilder(
+    column: $table.taskCountUnit,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5045,6 +5586,21 @@ class $$GoalsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get taskPriority => $composableBuilder(
+    column: $table.taskPriority,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get taskCountTarget => $composableBuilder(
+    column: $table.taskCountTarget,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get taskCountUnit => $composableBuilder(
+    column: $table.taskCountUnit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get durationMonths => $composableBuilder(
     column: $table.durationMonths,
     builder: (column) => ColumnOrderings(column),
@@ -5139,6 +5695,21 @@ class $$GoalsTableAnnotationComposer
   GeneratedColumn<String> get taskTime =>
       $composableBuilder(column: $table.taskTime, builder: (column) => column);
 
+  GeneratedColumn<int> get taskPriority => $composableBuilder(
+    column: $table.taskPriority,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get taskCountTarget => $composableBuilder(
+    column: $table.taskCountTarget,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get taskCountUnit => $composableBuilder(
+    column: $table.taskCountUnit,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<int> get durationMonths => $composableBuilder(
     column: $table.durationMonths,
     builder: (column) => column,
@@ -5214,6 +5785,9 @@ class $$GoalsTableTableManager
                 Value<String> taskWeekdays = const Value.absent(),
                 Value<int> taskDurationMinutes = const Value.absent(),
                 Value<String?> taskTime = const Value.absent(),
+                Value<int> taskPriority = const Value.absent(),
+                Value<int?> taskCountTarget = const Value.absent(),
+                Value<String?> taskCountUnit = const Value.absent(),
                 Value<int> durationMonths = const Value.absent(),
                 Value<int> durationWeeks = const Value.absent(),
                 Value<int> durationValue = const Value.absent(),
@@ -5236,6 +5810,9 @@ class $$GoalsTableTableManager
                 taskWeekdays: taskWeekdays,
                 taskDurationMinutes: taskDurationMinutes,
                 taskTime: taskTime,
+                taskPriority: taskPriority,
+                taskCountTarget: taskCountTarget,
+                taskCountUnit: taskCountUnit,
                 durationMonths: durationMonths,
                 durationWeeks: durationWeeks,
                 durationValue: durationValue,
@@ -5260,6 +5837,9 @@ class $$GoalsTableTableManager
                 Value<String> taskWeekdays = const Value.absent(),
                 Value<int> taskDurationMinutes = const Value.absent(),
                 Value<String?> taskTime = const Value.absent(),
+                Value<int> taskPriority = const Value.absent(),
+                Value<int?> taskCountTarget = const Value.absent(),
+                Value<String?> taskCountUnit = const Value.absent(),
                 Value<int> durationMonths = const Value.absent(),
                 Value<int> durationWeeks = const Value.absent(),
                 Value<int> durationValue = const Value.absent(),
@@ -5282,6 +5862,9 @@ class $$GoalsTableTableManager
                 taskWeekdays: taskWeekdays,
                 taskDurationMinutes: taskDurationMinutes,
                 taskTime: taskTime,
+                taskPriority: taskPriority,
+                taskCountTarget: taskCountTarget,
+                taskCountUnit: taskCountUnit,
                 durationMonths: durationMonths,
                 durationWeeks: durationWeeks,
                 durationValue: durationValue,

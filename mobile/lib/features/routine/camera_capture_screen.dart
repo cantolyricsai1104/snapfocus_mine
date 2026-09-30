@@ -36,8 +36,11 @@ class CameraCaptureScreen extends StatefulWidget {
 
 class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
   CameraController? _camera;
+  List<CameraDescription> _cameras = const [];
+  int _cameraIndex = 0;
   String? _error;
   bool _capturing = false;
+  bool _switchingCamera = false;
 
   @override
   void initState() {
@@ -50,19 +53,60 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
     try {
       final cameras = await availableCameras();
       if (cameras.isEmpty) throw StateError('No camera is available.');
-      final camera = CameraController(
-        cameras.first,
+      _cameras = cameras;
+      final backIndex = cameras.indexWhere(
+        (camera) => camera.lensDirection == CameraLensDirection.back,
+      );
+      _cameraIndex = backIndex >= 0 ? backIndex : 0;
+      await _initializeCamera(_cameras[_cameraIndex]);
+    } catch (error) {
+      if (mounted) setState(() => _error = '$error');
+    }
+  }
+
+  Future<void> _initializeCamera(CameraDescription description) async {
+    final camera = CameraController(
+      description,
+      ResolutionPreset.medium,
+      enableAudio: false,
+    );
+    await camera.initialize();
+    if (!mounted) {
+      await camera.dispose();
+      return;
+    }
+    setState(() => _camera = camera);
+  }
+
+  Future<void> _switchCamera() async {
+    if (_cameras.length < 2 || _switchingCamera || _capturing) return;
+    setState(() => _switchingCamera = true);
+    final nextIndex = (_cameraIndex + 1) % _cameras.length;
+    final oldCamera = _camera;
+    try {
+      final nextCamera = CameraController(
+        _cameras[nextIndex],
         ResolutionPreset.medium,
         enableAudio: false,
       );
-      await camera.initialize();
+      await nextCamera.initialize();
+      await oldCamera?.dispose();
       if (!mounted) {
-        await camera.dispose();
+        await nextCamera.dispose();
         return;
       }
-      setState(() => _camera = camera);
+      setState(() {
+        _camera = nextCamera;
+        _cameraIndex = nextIndex;
+        _switchingCamera = false;
+      });
     } catch (error) {
-      if (mounted) setState(() => _error = '$error');
+      if (mounted) {
+        setState(() {
+          _switchingCamera = false;
+          _error = '$error';
+        });
+      }
     }
   }
 
@@ -145,6 +189,23 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
         title: Text(
           widget.saveOnly ? 'Take a photo to continue' : 'A tiny reset',
         ),
+        actions: [
+          if (_cameras.length > 1 && _camera != null)
+            IconButton(
+              tooltip: 'Switch camera',
+              onPressed: _switchingCamera ? null : _switchCamera,
+              icon: _switchingCamera
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.flip_camera_ios_rounded),
+            ),
+        ],
       ),
       body: _error != null
           ? _CameraMessage(

@@ -26,6 +26,7 @@ void main() {
         scheduledTime: '09:30',
         date: '2026-09-17',
         repeat: TaskRepeat.none,
+        priority: 3,
         completedDates: const ['2026-09-17'],
       ),
       TaskBlock(
