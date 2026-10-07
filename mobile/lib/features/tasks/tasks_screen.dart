@@ -244,7 +244,7 @@ class _TasksScreenState extends State<TasksScreen> {
                     activityLabel: isActive ? _activityLabel(state) : null,
                     onStart: () => widget.onStartTask(task),
                     onEdit: () => _editTask(task),
-                    onDelete: () => widget.controller.delete(task.id),
+                    onDelete: () => _deleteTask(task),
                     onToggle: () => _toggleTask(task, date),
                     onMoveUp: () => _move(task, -1),
                     onMoveDown: () => _move(task, 1),
@@ -300,7 +300,20 @@ class _TasksScreenState extends State<TasksScreen> {
     final task = await showModalBottomSheet<TaskBlock>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => TaskEditorSheet(date: date, goals: widget.goals.goals),
+      builder: (_) => TaskEditorSheet(
+        date: date,
+        goals: widget.goals.goals,
+        defaultTime: widget.controller.nextAvailableTaskTime(
+          date: date,
+          durationMinutes: 25,
+        ),
+        defaultTimeIsAutomatic: true,
+        suggestTime: (duration) => widget.controller.nextAvailableTaskTime(
+          date: date,
+          durationMinutes: duration,
+        ),
+        defaultRepeat: _showRoutine ? TaskRepeat.weekly : TaskRepeat.none,
+      ),
     );
     if (task != null) await widget.controller.add(task);
   }
@@ -348,6 +361,27 @@ class _TasksScreenState extends State<TasksScreen> {
   Future<void> _toggleTask(TaskBlock task, String date) async {
     final achieved = await widget.controller.toggleCompleted(task.id, date);
     if (achieved != null && mounted) await showGoalAchieved(context, achieved);
+  }
+
+  Future<void> _deleteTask(TaskBlock task) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Delete ${task.title}?'),
+        content: const Text('This task will be removed from your schedule.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) await widget.controller.delete(task.id);
   }
 }
 
@@ -725,7 +759,7 @@ class _TaskCard extends StatelessWidget {
               ),
             ),
           Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.fromLTRB(12, 12, 48, 12),
             child: Row(
               children: [
                 Checkbox(
@@ -862,6 +896,16 @@ class _TaskCard extends StatelessWidget {
               ],
             ),
           ),
+          Positioned(
+            top: 0,
+            right: 0,
+            child: IconButton(
+              tooltip: 'Delete task',
+              onPressed: onDelete,
+              icon: const Icon(Icons.close_rounded),
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
         ],
       ),
     );
@@ -903,11 +947,19 @@ class TaskEditorSheet extends StatefulWidget {
     super.key,
     required this.date,
     required this.goals,
+    this.defaultTime = '10:00',
+    this.defaultTimeIsAutomatic = true,
+    this.suggestTime,
+    this.defaultRepeat = TaskRepeat.none,
     this.initial,
   });
 
   final String date;
   final List<Goal> goals;
+  final String defaultTime;
+  final bool defaultTimeIsAutomatic;
+  final String Function(int durationMinutes)? suggestTime;
+  final TaskRepeat defaultRepeat;
   final TaskBlock? initial;
 
   @override
@@ -920,6 +972,7 @@ class _TaskEditorSheetState extends State<TaskEditorSheet> {
   late final TextEditingController _countTargetText;
   late final TextEditingController _customCountUnitText;
   late int _duration;
+  late bool _timeAutomatic;
   late TaskType _type;
   late TaskRepeat _repeat;
   late int _priority;
@@ -949,15 +1002,16 @@ class _TaskEditorSheetState extends State<TaskEditorSheet> {
           : '',
     );
     _duration = task?.durationMinutes ?? 25;
+    _timeAutomatic = task == null && widget.defaultTimeIsAutomatic;
     _type = task?.type ?? TaskType.focus;
-    _repeat = task?.repeat ?? TaskRepeat.none;
+    _repeat = task?.repeat ?? widget.defaultRepeat;
     _priority = task?.priority ?? 1;
     _reminderMinutesBefore = task?.reminderMinutesBefore ?? 10;
     _countUnit = task?.countUnit;
     if (_countUnit != null && !const {'times', 'pages'}.contains(_countUnit)) {
       _countUnit = 'custom';
     }
-    _time = task?.scheduledTime ?? '10:00';
+    _time = task?.scheduledTime ?? widget.defaultTime;
     _repeatUntil = task?.repeatUntil;
     _goalId = widget.goals.any((goal) => goal.id == task?.goalId)
         ? task?.goalId
@@ -1111,7 +1165,7 @@ class _TaskEditorSheetState extends State<TaskEditorSheet> {
                     (minutes) => ChoiceChip(
                       label: Text('${minutes}m'),
                       selected: _duration == minutes,
-                      onSelected: (_) => setState(() => _duration = minutes),
+                      onSelected: (_) => _setDuration(minutes),
                     ),
                   )
                   .toList(),
@@ -1129,7 +1183,7 @@ class _TaskEditorSheetState extends State<TaskEditorSheet> {
               onChanged: (value) {
                 final parsed = int.tryParse(value);
                 if (parsed != null) {
-                  setState(() => _duration = parsed.clamp(1, 360).toInt());
+                  _setDuration(parsed.clamp(1, 360).toInt());
                 }
               },
             ),
@@ -1167,7 +1221,11 @@ class _TaskEditorSheetState extends State<TaskEditorSheet> {
                   child: OutlinedButton.icon(
                     onPressed: _pickTime,
                     icon: const Icon(Icons.schedule_rounded),
-                    label: Text(_time ?? 'No time'),
+                    label: Text(
+                      _timeAutomatic
+                          ? '${_time ?? 'No time'} (auto)'
+                          : (_time ?? 'No time'),
+                    ),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 17),
                       shape: RoundedRectangleBorder(
@@ -1178,6 +1236,15 @@ class _TaskEditorSheetState extends State<TaskEditorSheet> {
                 ),
               ],
             ),
+            if (widget.initial == null &&
+                widget.defaultRepeat != TaskRepeat.none)
+              const Padding(
+                padding: EdgeInsets.only(top: 6),
+                child: Text(
+                  'Routine blocks repeat automatically. You can change the schedule below.',
+                  style: TextStyle(color: Color(0xFF8D827B), fontSize: 12),
+                ),
+              ),
             const SizedBox(height: 12),
             DropdownButtonFormField<int>(
               initialValue: _reminderMinutesBefore,
@@ -1199,6 +1266,14 @@ class _TaskEditorSheetState extends State<TaskEditorSheet> {
                 }
               },
             ),
+            if (widget.initial == null)
+              const Padding(
+                padding: EdgeInsets.only(top: 6),
+                child: Text(
+                  'Start time is placed in the next available calendar slot. You can change it.',
+                  style: TextStyle(color: Color(0xFF8D827B), fontSize: 12),
+                ),
+              ),
             if (_repeat == TaskRepeat.weekly) ...[
               const SizedBox(height: 12),
               const Text(
@@ -1338,11 +1413,21 @@ class _TaskEditorSheetState extends State<TaskEditorSheet> {
       initialTime: TimeOfDay(hour: parts[0], minute: parts[1]),
     );
     if (picked != null) {
-      setState(
-        () => _time =
-            '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}',
-      );
+      setState(() {
+        _timeAutomatic = false;
+        _time =
+            '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+      });
     }
+  }
+
+  void _setDuration(int duration) {
+    setState(() {
+      _duration = duration;
+      if (_timeAutomatic) {
+        _time = widget.suggestTime?.call(duration) ?? _time;
+      }
+    });
   }
 
   Future<void> _pickRepeatUntil() async {

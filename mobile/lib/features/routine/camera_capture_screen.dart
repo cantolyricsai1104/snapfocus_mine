@@ -65,17 +65,30 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
   }
 
   Future<void> _initializeCamera(CameraDescription description) async {
+    final previous = _camera;
+    _camera = null;
+    await previous?.dispose();
+    if (mounted) setState(() {});
+    try {
+      final camera = await _createCamera(description);
+      if (!mounted) {
+        await camera.dispose();
+        return;
+      }
+      setState(() => _camera = camera);
+    } catch (error) {
+      if (mounted) setState(() => _error = '$error');
+    }
+  }
+
+  Future<CameraController> _createCamera(CameraDescription description) async {
     final camera = CameraController(
       description,
       ResolutionPreset.medium,
       enableAudio: false,
     );
     await camera.initialize();
-    if (!mounted) {
-      await camera.dispose();
-      return;
-    }
-    setState(() => _camera = camera);
+    return camera;
   }
 
   Future<void> _switchCamera() async {
@@ -83,14 +96,11 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
     setState(() => _switchingCamera = true);
     final nextIndex = (_cameraIndex + 1) % _cameras.length;
     final oldCamera = _camera;
+    final oldIndex = _cameraIndex;
     try {
-      final nextCamera = CameraController(
-        _cameras[nextIndex],
-        ResolutionPreset.medium,
-        enableAudio: false,
-      );
-      await nextCamera.initialize();
       await oldCamera?.dispose();
+      if (mounted) setState(() => _camera = null);
+      final nextCamera = await _createCamera(_cameras[nextIndex]);
       if (!mounted) {
         await nextCamera.dispose();
         return;
@@ -101,10 +111,18 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
         _switchingCamera = false;
       });
     } catch (error) {
+      CameraController? restored;
+      try {
+        restored = await _createCamera(_cameras[oldIndex]);
+      } catch (_) {
+        // Keep the original error visible if the previous camera also fails.
+      }
       if (mounted) {
         setState(() {
+          _camera = restored;
+          _cameraIndex = oldIndex;
           _switchingCamera = false;
-          _error = '$error';
+          _error = restored == null ? '$error' : null;
         });
       }
     }
@@ -192,7 +210,11 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
         actions: [
           if (_cameras.length > 1 && _camera != null)
             IconButton(
-              tooltip: 'Switch camera',
+              tooltip:
+                  _cameras[_cameraIndex].lensDirection ==
+                      CameraLensDirection.front
+                  ? 'Use back camera'
+                  : 'Use selfie camera',
               onPressed: _switchingCamera ? null : _switchCamera,
               icon: _switchingCamera
                   ? const SizedBox(

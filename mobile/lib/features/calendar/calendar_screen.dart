@@ -90,8 +90,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   date: date,
                   onStartTask: widget.onStartTask,
                   onAdd: () => _addTask(date),
+                  onLongPressAdd: (time) => _addTask(date, initialTime: time),
                   onEdit: _editTask,
-                  onDelete: (task) => widget.controller.delete(task.id),
+                  onDelete: _deleteTask,
                   onChanged: (task) => widget.controller.update(task),
                 )
               else if (_mode == CalendarViewMode.month)
@@ -139,11 +140,25 @@ class _CalendarScreenState extends State<CalendarScreen> {
     });
   }
 
-  Future<void> _addTask(String date) async {
+  Future<void> _addTask(String date, {String? initialTime}) async {
     final task = await showModalBottomSheet<TaskBlock>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => TaskEditorSheet(date: date, goals: widget.goals.goals),
+      builder: (_) => TaskEditorSheet(
+        date: date,
+        goals: widget.goals.goals,
+        defaultTime:
+            initialTime ??
+            widget.controller.nextAvailableTaskTime(
+              date: date,
+              durationMinutes: 25,
+            ),
+        defaultTimeIsAutomatic: initialTime == null,
+        suggestTime: (duration) => widget.controller.nextAvailableTaskTime(
+          date: date,
+          durationMinutes: duration,
+        ),
+      ),
     );
     if (task != null) await widget.controller.add(task);
   }
@@ -159,6 +174,27 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ),
     );
     if (updated != null) await widget.controller.update(updated);
+  }
+
+  Future<void> _deleteTask(TaskBlock task) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Delete ${task.title}?'),
+        content: const Text('This task will be removed from your schedule.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) await widget.controller.delete(task.id);
   }
 }
 
@@ -226,6 +262,7 @@ class _DayView extends StatelessWidget {
     required this.date,
     required this.onStartTask,
     required this.onAdd,
+    required this.onLongPressAdd,
     required this.onEdit,
     required this.onDelete,
     required this.onChanged,
@@ -235,6 +272,7 @@ class _DayView extends StatelessWidget {
   final String date;
   final ValueChanged<TaskBlock> onStartTask;
   final VoidCallback onAdd;
+  final ValueChanged<String> onLongPressAdd;
   final ValueChanged<TaskBlock> onEdit;
   final ValueChanged<TaskBlock> onDelete;
   final ValueChanged<TaskBlock> onChanged;
@@ -271,52 +309,50 @@ class _DayView extends StatelessWidget {
         const SizedBox(height: 10),
         if (tasks.isEmpty)
           const Padding(
-            padding: EdgeInsets.all(32),
+            padding: EdgeInsets.all(16),
             child: Text(
-              'No scheduled blocks for this day.',
+              'Long-press a time below to add a block.',
               textAlign: TextAlign.center,
               style: TextStyle(color: Color(0xFF8D827B)),
             ),
           )
-        else ...[
-          if (anytimeTasks.isNotEmpty) ...[
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: Padding(
-                padding: EdgeInsets.only(top: 4, bottom: 8),
-                child: Text(
-                  'Anytime',
-                  style: TextStyle(
-                    color: Color(0xFF8D827B),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                  ),
+        else if (anytimeTasks.isNotEmpty) ...[
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: Padding(
+              padding: EdgeInsets.only(top: 4, bottom: 8),
+              child: Text(
+                'Anytime',
+                style: TextStyle(
+                  color: Color(0xFF8D827B),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),
-            for (final task in anytimeTasks)
-              _AnytimeTaskCard(
-                task: task,
-                date: date,
-                onStart: () => onStartTask(task),
-                onEdit: () => onEdit(task),
-                onDelete: () => onDelete(task),
-              ),
-            const SizedBox(height: 12),
-          ],
-          if (timedTasks.isNotEmpty)
-            SizedBox(
-              height: 560,
-              child: _DayTimeline(
-                tasks: timedTasks,
-                date: date,
-                onStartTask: onStartTask,
-                onEdit: onEdit,
-                onDelete: onDelete,
-                onChanged: onChanged,
-              ),
+          ),
+          for (final task in anytimeTasks)
+            _AnytimeTaskCard(
+              task: task,
+              date: date,
+              onStart: () => onStartTask(task),
+              onEdit: () => onEdit(task),
+              onDelete: () => onDelete(task),
             ),
+          const SizedBox(height: 12),
         ],
+        SizedBox(
+          height: 560,
+          child: _DayTimeline(
+            tasks: timedTasks,
+            date: date,
+            onStartTask: onStartTask,
+            onEdit: onEdit,
+            onDelete: onDelete,
+            onChanged: onChanged,
+            onLongPressAdd: onLongPressAdd,
+          ),
+        ),
       ],
     );
   }
@@ -402,7 +438,7 @@ class _AnytimeTaskCard extends StatelessWidget {
   }
 }
 
-class _DayTimeline extends StatelessWidget {
+class _DayTimeline extends StatefulWidget {
   const _DayTimeline({
     required this.tasks,
     required this.date,
@@ -410,6 +446,7 @@ class _DayTimeline extends StatelessWidget {
     required this.onEdit,
     required this.onDelete,
     required this.onChanged,
+    required this.onLongPressAdd,
   });
 
   static const double _hourHeight = 72;
@@ -421,6 +458,28 @@ class _DayTimeline extends StatelessWidget {
   final ValueChanged<TaskBlock> onEdit;
   final ValueChanged<TaskBlock> onDelete;
   final ValueChanged<TaskBlock> onChanged;
+  final ValueChanged<String> onLongPressAdd;
+
+  @override
+  State<_DayTimeline> createState() => _DayTimelineState();
+}
+
+class _DayTimelineState extends State<_DayTimeline> {
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController(
+      initialScrollOffset: _DayTimeline._hourHeight * 6,
+    );
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -433,73 +492,94 @@ class _DayTimeline extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(18),
         child: SingleChildScrollView(
-          controller: ScrollController(initialScrollOffset: 6 * _hourHeight),
+          controller: _scrollController,
           padding: const EdgeInsets.only(bottom: 24),
           child: SizedBox(
-            height: _hourHeight * 24,
+            height: _DayTimeline._hourHeight * 24,
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final timelineWidth = constraints.maxWidth - _labelWidth;
-                return Stack(
-                  children: [
-                    for (var hour = 0; hour < 24; hour++)
-                      Positioned(
-                        top: hour * _hourHeight,
-                        left: 0,
-                        right: 0,
-                        height: _hourHeight,
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SizedBox(
-                              width: _labelWidth,
-                              child: Padding(
-                                padding: const EdgeInsets.only(
-                                  top: 7,
-                                  right: 10,
-                                ),
-                                child: Text(
-                                  _formatHour(hour),
-                                  textAlign: TextAlign.right,
-                                  style: const TextStyle(
-                                    color: Color(0xFF8D827B),
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
+                final timelineWidth =
+                    constraints.maxWidth - _DayTimeline._labelWidth;
+                return GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onLongPressStart: (details) {
+                    if (details.localPosition.dx < _DayTimeline._labelWidth) {
+                      return;
+                    }
+                    final minutes = _snap(
+                      details.localPosition.dy / _DayTimeline._hourHeight * 60,
+                    ).clamp(0, 24 * 60 - 15).toInt();
+                    final occupied = widget.tasks.any((task) {
+                      final start = _minutes(task.scheduledTime!);
+                      final end = start + task.durationMinutes;
+                      return minutes >= start && minutes < end;
+                    });
+                    if (!occupied) widget.onLongPressAdd(_time(minutes));
+                  },
+                  child: Stack(
+                    children: [
+                      for (var hour = 0; hour < 24; hour++)
+                        Positioned(
+                          top: hour * _DayTimeline._hourHeight,
+                          left: 0,
+                          right: 0,
+                          height: _DayTimeline._hourHeight,
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(
+                                width: _DayTimeline._labelWidth,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(
+                                    top: 7,
+                                    right: 10,
+                                  ),
+                                  child: Text(
+                                    _formatHour(hour),
+                                    textAlign: TextAlign.right,
+                                    style: const TextStyle(
+                                      color: Color(0xFF8D827B),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                            Expanded(
-                              child: Container(
-                                height: 1,
-                                margin: const EdgeInsets.only(top: 15),
-                                color: const Color(0xFFF1E3D7),
+                              Expanded(
+                                child: Container(
+                                  height: 1,
+                                  margin: const EdgeInsets.only(top: 15),
+                                  color: const Color(0xFFF1E3D7),
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    for (final task in tasks)
-                      if (task.scheduledTime != null)
-                        _TimelineTask(
-                          key: ValueKey(task.id),
-                          task: task,
-                          date: date,
-                          left: _labelWidth + 8,
-                          width: timelineWidth - 16,
-                          top: _minutes(task.scheduledTime!) / 60 * _hourHeight,
-                          onStart: () => onStartTask(task),
-                          onEdit: () => onEdit(task),
-                          onDelete: () => onDelete(task),
-                          onChanged: onChanged,
+                      for (final task in widget.tasks)
+                        if (task.scheduledTime != null)
+                          _TimelineTask(
+                            key: ValueKey(task.id),
+                            task: task,
+                            date: widget.date,
+                            left: _DayTimeline._labelWidth + 8,
+                            width: timelineWidth - 16,
+                            top:
+                                _minutes(task.scheduledTime!) /
+                                60 *
+                                _DayTimeline._hourHeight,
+                            onStart: () => widget.onStartTask(task),
+                            onEdit: () => widget.onEdit(task),
+                            onDelete: () => widget.onDelete(task),
+                            onChanged: widget.onChanged,
+                          ),
+                      if (_isToday(widget.date))
+                        _CurrentTimeIndicator(
+                          date: widget.date,
+                          hourHeight: _DayTimeline._hourHeight,
+                          labelWidth: _DayTimeline._labelWidth,
                         ),
-                    if (_isToday(date))
-                      _CurrentTimeIndicator(
-                        date: date,
-                        hourHeight: _hourHeight,
-                        labelWidth: _labelWidth,
-                      ),
-                  ],
+                    ],
+                  ),
                 );
               },
             ),
@@ -631,6 +711,17 @@ class _TimelineTaskState extends State<_TimelineTask> {
 
   TaskBlock get _task => _preview ?? widget.task;
 
+  @override
+  void didUpdateWidget(covariant _TimelineTask oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Keep the optimistic preview visible until the parent has accepted and
+    // rebuilt with the saved task. Clearing it in onDragEnd causes a visible
+    // snap back to the old slot while the async save is still in progress.
+    if (_preview != null && widget.task == _preview) {
+      setState(() => _preview = null);
+    }
+  }
+
   void _beginDragAt(double globalY) {
     // Keep the pointer origin in screen coordinates. The resize handle moves
     // as the block grows, so localPosition would shift underneath the finger.
@@ -660,7 +751,6 @@ class _TimelineTaskState extends State<_TimelineTask> {
   void _commit() {
     if (_preview != null) widget.onChanged(_preview!);
     setState(() {
-      _preview = null;
       _dragStartGlobalY = null;
       _baseMinutes = null;
       _baseDuration = null;
@@ -788,6 +878,16 @@ class _TimelineTaskState extends State<_TimelineTask> {
                       ),
                   ],
                 ),
+              ),
+            ),
+            Positioned(
+              top: 0,
+              right: 0,
+              child: IconButton(
+                tooltip: 'Delete task',
+                onPressed: widget.onDelete,
+                icon: const Icon(Icons.close_rounded, size: 17),
+                visualDensity: VisualDensity.compact,
               ),
             ),
             Positioned(

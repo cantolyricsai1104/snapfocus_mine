@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/foundation.dart';
 
 import 'routine.dart';
@@ -141,7 +143,7 @@ class TaskController extends ChangeNotifier {
         _nextAvailableTaskTime(
           date: goal.startedOn ?? _dateString(DateTime.now()),
           durationMinutes: goal.taskDurationMinutes,
-          excludingId: previous?.id,
+          excludingId: id,
         );
     final task = TaskBlock(
       id: id,
@@ -204,9 +206,11 @@ class TaskController extends ChangeNotifier {
       candidate += 60
     ) {
       final end = candidate + durationMinutes;
-      final overlaps = scheduled.any(
-        (slot) => candidate < slot.end && end > slot.start,
-      );
+      final overlaps = scheduled.any((slot) {
+        final overlap =
+            math.min(end, slot.end) - math.max(candidate, slot.start);
+        return overlap > 15;
+      });
       if (!overlaps) return _formatTime(candidate);
     }
     return _formatTime(9 * 60);
@@ -219,6 +223,16 @@ class TaskController extends ChangeNotifier {
 
   String _formatTime(int minutes) =>
       '${(minutes ~/ 60).toString().padLeft(2, '0')}:${(minutes % 60).toString().padLeft(2, '0')}';
+
+  String nextAvailableTaskTime({
+    required String date,
+    required int durationMinutes,
+    String? excludingId,
+  }) => _nextAvailableTaskTime(
+    date: date,
+    durationMinutes: durationMinutes,
+    excludingId: excludingId,
+  );
 
   Future<void> removeGoalTask(String goalId) async {
     final id = 'goal-task-$goalId';
