@@ -881,16 +881,6 @@ class _TimelineTaskState extends State<_TimelineTask> {
               ),
             ),
             Positioned(
-              top: 0,
-              right: 0,
-              child: IconButton(
-                tooltip: 'Delete task',
-                onPressed: widget.onDelete,
-                icon: const Icon(Icons.close_rounded, size: 17),
-                visualDensity: VisualDensity.compact,
-              ),
-            ),
-            Positioned(
               left: 0,
               right: 0,
               bottom: 0,

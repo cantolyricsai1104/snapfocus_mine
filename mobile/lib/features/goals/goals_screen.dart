@@ -390,118 +390,98 @@ class _GoalCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(18),
       side: const BorderSide(color: Color(0xFFF1E3D7)),
     ),
-    child: Stack(
-      children: [
-        InkWell(
-          borderRadius: BorderRadius.circular(18),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 14, 48, 14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    child: InkWell(
+      borderRadius: BorderRadius.circular(18),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        goal.name,
-                        style: const TextStyle(
-                          color: _ink,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
+                Expanded(
+                  child: Text(
+                    goal.name,
+                    style: const TextStyle(
+                      color: _ink,
+                      fontWeight: FontWeight.w700,
                     ),
-                    if (goal.expired)
-                      const Chip(
-                        avatar: Icon(Icons.event_busy_rounded, size: 18),
-                        label: Text('Ended'),
-                        visualDensity: VisualDensity.compact,
-                      )
-                    else if (goal.achieved)
-                      const Chip(
-                        avatar: Icon(
-                          Icons.verified_rounded,
-                          color: Color(0xFF4A946A),
-                          size: 18,
-                        ),
-                        label: Text('Achieved'),
-                        visualDensity: VisualDensity.compact,
-                      )
-                    else
-                      Text(
-                        '${(goal.progress * 100).round()}%',
-                        style: TextStyle(
-                          color: color,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    if (goal.taskPriority > 1)
-                      Padding(
-                        padding: const EdgeInsets.only(left: 4),
-                        child: Icon(
-                          Icons.flag_rounded,
-                          size: 17,
-                          color: _goalPriorityColor(goal.taskPriority),
-                        ),
-                      ),
-                    IconButton(
-                      tooltip: 'View proof photos and notes',
-                      onPressed: onProof,
-                      icon: const Icon(Icons.photo_library_outlined),
-                    ),
-                    PopupMenuButton<String>(
-                      tooltip: 'Goal options',
-                      onSelected: (value) {
-                        if (value == 'edit') onEdit();
-                        if (value == 'duplicate') onDuplicate();
-                        if (value == 'delete') onDelete();
-                      },
-                      itemBuilder: (_) => const [
-                        PopupMenuItem(value: 'edit', child: Text('Edit goal')),
-                        PopupMenuItem(
-                          value: 'duplicate',
-                          child: Text('Duplicate goal'),
-                        ),
-                        PopupMenuItem(
-                          value: 'delete',
-                          child: Text('Delete goal'),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 9),
-                Semantics(
-                  label:
-                      '${goal.name}: ${(goal.progress * 100).round()}% of planned ${goal.metricType == GoalMetricType.days ? 'days' : 'focus time'}',
-                  child: LinearProgressIndicator(
-                    value: goal.progress,
-                    minHeight: 9,
-                    borderRadius: BorderRadius.circular(8),
-                    color: goal.achieved ? const Color(0xFF4A946A) : color,
-                    backgroundColor: color.withValues(alpha: 0.14),
                   ),
                 ),
-                const SizedBox(height: 7),
-                Text(
-                  '${_goalDurationLabel(goal)} · ${goal.currentValue.toStringAsFixed(0)} ${goal.metricType == GoalMetricType.days ? 'days completed' : 'min focused'}',
-                  style: const TextStyle(color: _muted, fontSize: 12),
+                if (goal.expired)
+                  const Chip(
+                    avatar: Icon(Icons.event_busy_rounded, size: 18),
+                    label: Text('Ended'),
+                    visualDensity: VisualDensity.compact,
+                  )
+                else if (goal.achieved)
+                  const Chip(
+                    avatar: Icon(
+                      Icons.verified_rounded,
+                      color: Color(0xFF4A946A),
+                      size: 18,
+                    ),
+                    label: Text('Achieved'),
+                    visualDensity: VisualDensity.compact,
+                  )
+                else
+                  Text(
+                    '${(goal.progress * 100).round()}%',
+                    style: TextStyle(color: color, fontWeight: FontWeight.w800),
+                  ),
+                if (goal.taskPriority > 1)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4),
+                    child: Icon(
+                      Icons.flag_rounded,
+                      size: 17,
+                      color: _goalPriorityColor(goal.taskPriority),
+                    ),
+                  ),
+                IconButton(
+                  tooltip: 'View proof photos and notes',
+                  onPressed: onProof,
+                  icon: const Icon(Icons.photo_library_outlined),
+                ),
+                PopupMenuButton<String>(
+                  tooltip: 'Goal options',
+                  onSelected: (value) {
+                    if (value == 'edit') onEdit();
+                    if (value == 'duplicate') onDuplicate();
+                    if (value == 'delete') onDelete();
+                  },
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'edit', child: Text('Edit goal')),
+                    PopupMenuItem(
+                      value: 'duplicate',
+                      child: Text('Duplicate goal'),
+                    ),
+                    PopupMenuItem(value: 'delete', child: Text('Delete goal')),
+                  ],
                 ),
               ],
             ),
-          ),
+            const SizedBox(height: 9),
+            Semantics(
+              label:
+                  '${goal.name}: ${(goal.progress * 100).round()}% of planned ${goal.metricType == GoalMetricType.days ? 'days' : 'focus time'}',
+              child: LinearProgressIndicator(
+                value: goal.progress,
+                minHeight: 9,
+                borderRadius: BorderRadius.circular(8),
+                color: goal.achieved ? const Color(0xFF4A946A) : color,
+                backgroundColor: color.withValues(alpha: 0.14),
+              ),
+            ),
+            const SizedBox(height: 7),
+            Text(
+              '${_goalDurationLabel(goal)} · ${goal.currentValue.toStringAsFixed(0)} ${goal.metricType == GoalMetricType.days ? 'days completed' : 'min focused'}',
+              style: const TextStyle(color: _muted, fontSize: 12),
+            ),
+          ],
         ),
-        Positioned(
-          top: 0,
-          right: 0,
-          child: IconButton(
-            tooltip: 'Delete goal',
-            onPressed: onDelete,
-            icon: const Icon(Icons.close_rounded),
-            visualDensity: VisualDensity.compact,
-          ),
-        ),
-      ],
+      ),
     ),
   );
 }
@@ -1162,13 +1142,24 @@ class _EditorSheet extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: _ink,
-              fontSize: 21,
-              fontWeight: FontWeight.w800,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    color: _ink,
+                    fontSize: 21,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Close',
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.close_rounded),
+              ),
+            ],
           ),
           const SizedBox(height: 18),
           ...children,

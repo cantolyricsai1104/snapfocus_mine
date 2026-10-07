@@ -759,7 +759,7 @@ class _TaskCard extends StatelessWidget {
               ),
             ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 48, 12),
+            padding: const EdgeInsets.all(12),
             child: Row(
               children: [
                 Checkbox(
@@ -896,16 +896,6 @@ class _TaskCard extends StatelessWidget {
               ],
             ),
           ),
-          Positioned(
-            top: 0,
-            right: 0,
-            child: IconButton(
-              tooltip: 'Delete task',
-              onPressed: onDelete,
-              icon: const Icon(Icons.close_rounded),
-              visualDensity: VisualDensity.compact,
-            ),
-          ),
         ],
       ),
     );
@@ -1040,13 +1030,26 @@ class _TaskEditorSheetState extends State<TaskEditorSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              widget.initial == null ? 'Configure new block' : 'Edit block',
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF29313D),
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    widget.initial == null
+                        ? 'Configure new block'
+                        : 'Edit block',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF29313D),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Close',
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             TextField(
